@@ -1,17 +1,10 @@
 <?php
 
 // includes/logic/register.logic.php
-
-session_start();
-
 if (isset($_SESSION['user_id'])) {
     header('Location: '.BASE_URL.'public/');
     exit;
 }
-
-include_once __DIR__.'/../config.php';
-include_once __DIR__.'/../db.php';
-include_once __DIR__.'/../helpers.php';
 include_once __DIR__.'/../models/UserModel.php'; // MODELİ DAHİL ET
 
 $brand_name = 'Solaris';

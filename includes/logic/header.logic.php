@@ -2,13 +2,6 @@
 
 // includes/logic/header.logic.php
 
-// Bu dosya, sayfa mantık dosyaları (örn: index.logic.php) tarafından
-// session_start() çağrıldıktan sonra dahil edilmelidir.
-
-// Temel dosyaları dahil et
-include_once __DIR__.'/../config.php';
-include_once __DIR__.'/../db.php';
-include_once __DIR__.'/../helpers.php'; // get_unread_message_count burada
 
 // Oturum durumunu ve kullanıcı bilgilerini değişkenlere ata
 $is_logged_in = isset($_SESSION['user_id']);

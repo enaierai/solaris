@@ -2,17 +2,6 @@
 
 // includes/logic/dashboard.logic.php
 
-// Hata raporlamasını geliştirme ortamı için etkinleştir
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-session_start();
-
-// Gerekli dosyaları dahil et
-include_once __DIR__.'/../config.php';
-include_once __DIR__.'/../db.php';
-include_once __DIR__.'/../helpers.php'; // time_ago gibi fonksiyonlar için
-
 // Kullanıcı oturumu açık değilse giriş sayfasına yönlendir
 if (!isset($_SESSION['user_id'])) {
     header('Location: '.BASE_URL.'public/pages/login.php');

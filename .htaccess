@@ -1,0 +1,11 @@
+RewriteEngine On
+
+# Eğer istenen adres sunucuda bir dosya değilse,
+RewriteCond %{REQUEST_FILENAME} !-f
+
+# Eğer istenen adres sunucuda bir klasör değilse,
+RewriteCond %{REQUEST_FILENAME} !-d
+
+# O zaman tüm isteği index.php'ye yönlendir.
+# URL'deki her şeyi (?path=...) olarak index.php'ye bir parametre gibi gönderir.
+RewriteRule ^(.*)$ index.php?path=$1 [L,QSA]

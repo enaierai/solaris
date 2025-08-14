@@ -843,3 +843,38 @@ header {
 .profile-post-card:hover .grid-overlay {
     opacity: 1;
 }
+.comments-container .comment-list {
+    /* * Yorum listesinin maksimum yüksekliğini belirler. 
+     * Bu değeri projenizin tasarımına göre artırıp azaltabilirsiniz.
+     */
+    max-height: 350px; 
+    
+    /* * Eğer yorumların toplam yüksekliği max-height değerini aşarsa,
+     * dikey bir kaydırma çubuğu (scrollbar) otomatik olarak görünür hale gelir.
+     */
+    overflow-y: auto;
+
+    /* * Kaydırma çubuğu ile yorum içerikleri arasında küçük bir boşluk
+     * bırakarak daha estetik bir görünüm sağlar.
+     */
+    padding-right: 15px;
+}
+
+/* Kaydırma çubuğunun daha modern ve ince görünmesi için (Webkit tarayıcılar: Chrome, Safari, Edge) */
+.comment-list::-webkit-scrollbar {
+    width: 8px;
+}
+
+.comment-list::-webkit-scrollbar-track {
+    background: #f1f1f1;
+    border-radius: 10px;
+}
+
+.comment-list::-webkit-scrollbar-thumb {
+    background: #ccc;
+    border-radius: 10px;
+}
+
+.comment-list::-webkit-scrollbar-thumb:hover {
+    background: #aaa;
+}

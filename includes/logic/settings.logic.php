@@ -1,12 +1,6 @@
 <?php
 
 // includes/logic/settings.logic.php
-
-session_start();
-include_once __DIR__.'/../config.php';
-include_once __DIR__.'/../db.php';
-include_once __DIR__.'/../helpers.php';
-
 // Kullanıcı giriş yapmamışsa yönlendir
 if (!isset($_SESSION['user_id'])) {
     header('Location: '.BASE_URL.'public/pages/login.php');

@@ -65,18 +65,20 @@ include_once __DIR__.'/../../includes/header.php';
                             </div>
                             <small class="text-muted d-block mb-3"><?php echo time_ago(strtotime($post_data['created_at'])); ?></small>
                             <div class="d-flex align-items-center gap-3 mb-3">
-                                <button type="button" class="btn btn-sm like-btn like-button" data-post-id="<?php echo $post_data['post_id']; ?>" data-liked="<?php echo $post_data['user_liked'] ? 'true' : 'false'; ?>">
-                                    <i class="<?php echo $post_data['user_liked'] ? 'fas text-danger' : 'far'; ?> fa-heart me-1 heart-icon"></i>
-                                    <span class="like-count"><?php echo $post_data['like_count']; ?></span>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary comment-toggle-button" data-post-id="<?php echo $post_data['post_id']; ?>">
-                                    <i class="far fa-comment-dots me-1"></i>
-                                    <span class="comment-count"><?php echo $post_data['comment_count']; ?></span>
-                                </button>
-                                <button type="button" class="btn btn-sm btn-outline-secondary ms-auto save-post-button" data-post-id="<?php echo $post_data['post_id']; ?>" data-saved="<?php echo $post_data['user_saved'] ? 'true' : 'false'; ?>">
-                                    <i class="<?php echo $post_data['user_saved'] ? 'fas' : 'far'; ?> fa-bookmark"></i>
-                                </button>
-                            </div>
+    <button type="button" class="btn btn-sm like-btn like-button" data-post-id="<?php echo $post_data['post_id']; ?>" data-liked="<?php echo $post_data['user_liked'] ? 'true' : 'false'; ?>">
+        <i class="<?php echo $post_data['user_liked'] ? 'fas text-danger' : 'far'; ?> fa-heart me-1 heart-icon"></i>
+        <span class="like-count"><?php echo $post_data['like_count']; ?></span>
+    </button>
+
+    <div class="btn btn-sm text-muted" id="comment-counter-<?php echo $post_data['post_id']; ?>">
+        <i class="far fa-comment-dots me-1"></i>
+        <span class="comment-count"><?php echo $post_data['comment_count']; ?></span>
+    </div>
+
+    <button type="button" class="btn btn-sm btn-outline-secondary ms-auto save-post-button" data-post-id="<?php echo $post_data['post_id']; ?>" data-saved="<?php echo $post_data['user_saved'] ? 'true' : 'false'; ?>">
+        <i class="<?php echo $post_data['user_saved'] ? 'fas' : 'far'; ?> fa-bookmark"></i>
+    </button>
+</div>
                             
                             <div class="comments-container flex-grow-1" id="comments-<?php echo $post_data['post_id']; ?>" style="display: block;">
                                 <div class="comment-list">

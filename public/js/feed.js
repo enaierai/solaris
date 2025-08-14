@@ -91,11 +91,11 @@ document.addEventListener("DOMContentLoaded", function() {
                 const commentText = commentInput.value.trim();
                 const submitButton = this.querySelector('.comment-submit-button, .btn[type="submit"]');
                 const originalButtonText = submitButton.innerHTML;
-
+    
                 if (commentText === '') return;
                 submitButton.disabled = true;
                 submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-
+    
                 sendAjaxRequest(`${BASE_URL}public/ajax/add_comment.php`, { post_id: postId, comment_text: commentText },
                     (data) => {
                         if (data.success && data.comment_html) {
@@ -106,16 +106,24 @@ document.addEventListener("DOMContentLoaded", function() {
                                 commentList.insertAdjacentHTML('afterbegin', data.comment_html);
                             }
                             commentInput.value = '';
-                            const commentCountSpan = document.querySelector(`.comment-toggle-button[data-post-id="${postId}"] .comment-count`);
+    
+                            // --- DÜZELTİLEN BÖLÜM BURASI ---
+                            // jQuery ($) yerine saf JavaScript (document.querySelector) kullanıldı.
+                            const commentCountSpan = document.querySelector('#comment-counter-' + postId + ' .comment-count');
+                            
                             if (commentCountSpan) {
-                                commentCountSpan.textContent = parseInt(commentCountSpan.textContent) + 1;
+                                // Mevcut sayıyı alıp 1 artırıyoruz.
+                                let currentCount = parseInt(commentCountSpan.textContent, 10) || 0;
+                                commentCountSpan.textContent = currentCount + 1;
                             }
+                            // --- DÜZELTME SONU ---
+    
                             attachDeleteCommentListeners();
                         } else {
-                             Swal.fire({ icon: 'error', title: 'Hata!', text: data.message || 'Yorum eklenemedi.'});
+                            Swal.fire({ icon: 'error', title: 'Hata!', text: data.message || 'Yorum eklenemedi.'});
                         }
                     },
-                    null,
+                    null, // Hata durumu için sendAjaxRequest'in kendi handler'ı varsa bu null kalabilir
                     () => {
                         submitButton.disabled = false;
                         submitButton.innerHTML = originalButtonText;

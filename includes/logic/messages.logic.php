@@ -2,13 +2,6 @@
 
 // includes/logic/messages.logic.php
 
-session_start();
-
-// Gerekli dosyaları dahil et
-include_once __DIR__.'/../config.php';
-include_once __DIR__.'/../db.php';
-include_once __DIR__.'/../helpers.php';
-
 // Kullanıcının oturum açıp açmadığını kontrol et
 if (!isset($_SESSION['user_id'])) {
     header('Location: '.BASE_URL.'public/pages/login.php');

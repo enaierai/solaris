@@ -1,12 +1,3 @@
-<?php
-// Sayfanın tüm mantığını (veri çekme, session işlemleri vb.) çalıştırır.
-include_once __DIR__.'/../includes/logic/index.logic.php';
-
-// Hazırlanan değişkenleri kullanarak sayfanın başlığını oluşturur.
-include_once __DIR__.'/../includes/header.php';
-?>
-
-
 
 <div class="row">
     <div class="col-lg-7 col-xl-8">
@@ -73,16 +64,16 @@ include_once __DIR__.'/../includes/header.php';
             // ESKİ, YAVAŞ SORGUNUN YERİNE YENİ FONKSİYONU ÇAĞIRIYORUZ
             $popular_tags = getPopularTags($conn, 10);
 
-if (!empty($popular_tags)) {
-    foreach ($popular_tags as $tag) {
-        // Etiketin başındaki '#' işaretini URL'de kodlayalım ama gösterirken ekleyelim
-        $tag_name_for_url = str_replace('#', '', $tag['name']);
-        echo '<a href="'.BASE_URL.'public/pages/search.php?q='.urlencode('#'.$tag_name_for_url).'" class="btn btn-sm btn-outline-dark rounded-pill">#'.htmlspecialchars($tag_name_for_url).'</a>';
-    }
-} else {
-    echo '<p class="text-muted small">Henüz popüler etiket yok.</p>';
-}
-?>
+        if (!empty($popular_tags)) {
+            foreach ($popular_tags as $tag) {
+                // Etiketin başındaki '#' işaretini URL'de kodlayalım ama gösterirken ekleyelim
+                $tag_name_for_url = str_replace('#', '', $tag['name']);
+                echo '<a href="'.BASE_URL.'public/pages/search.php?q='.urlencode('#'.$tag_name_for_url).'" class="btn btn-sm btn-outline-dark rounded-pill">#'.htmlspecialchars($tag_name_for_url).'</a>';
+            }
+        } else {
+            echo '<p class="text-muted small">Henüz popüler etiket yok.</p>';
+        }
+        ?>
         </div>
     </div>
 </div>
@@ -95,7 +86,7 @@ if (!empty($popular_tags)) {
                         <a href="<?php echo BASE_URL; ?>public/pages/explore.php" class="text-decoration-none small text-info">Tümünü Gör</a>
                     </div>
                     <?php
-    $suggested_users_sql = 'SELECT u.id, u.username, u.profile_picture_url, COUNT(p.id) AS post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id WHERE u.id != ? AND u.id NOT IN (SELECT following_id FROM follows WHERE follower_id = ?) GROUP BY u.id ORDER BY post_count DESC LIMIT 5';
+            $suggested_users_sql = 'SELECT u.id, u.username, u.profile_picture_url, COUNT(p.id) AS post_count FROM users u LEFT JOIN posts p ON u.id = p.user_id WHERE u.id != ? AND u.id NOT IN (SELECT following_id FROM follows WHERE follower_id = ?) GROUP BY u.id ORDER BY post_count DESC LIMIT 5';
                 $suggested_users_stmt = $conn->prepare($suggested_users_sql);
                 $suggested_users_stmt->bind_param('ii', $current_user_id, $current_user_id);
                 $suggested_users_stmt->execute();
@@ -132,11 +123,6 @@ if (!empty($popular_tags)) {
         </div>
     </div>
 </div>
-
-<?php
-// Sayfanın geri kalanını oluşturur (footer, script'ler vb.)
-include_once __DIR__.'/../includes/footer.php';
-?>
 
 <script>
     // Sayfaya özel JS işlemleri

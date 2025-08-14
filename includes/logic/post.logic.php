@@ -2,10 +2,6 @@
 
 // includes/logic/post.logic.php (NİHAİ VE TAM VERSİYON)
 
-session_start();
-include_once __DIR__.'/../config.php';
-include_once __DIR__.'/../db.php';
-include_once __DIR__.'/../helpers.php';
 include_once __DIR__.'/../models/UserModel.php';
 include_once __DIR__.'/../models/PostModel.php';
 include_once __DIR__.'/../models/CommentModel.php';
