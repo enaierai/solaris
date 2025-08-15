@@ -1,14 +1,7 @@
 <?php
 
 // public/ajax/likes.php (NİHAİ VE TAM VERSİYON)
-
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-session_start();
-
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
+require_once __DIR__.'/../../includes/init.php';
 // YENİ: Artık tüm işlemleri modeller üzerinden yapacağız.
 include_once __DIR__.'/../../includes/models/PostModel.php';
 include_once __DIR__.'/../../includes/models/UserModel.php';

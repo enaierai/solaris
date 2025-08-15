@@ -1,10 +1,7 @@
 <?php
 
-session_start();
-
-// Yol düzeltmesi yapıldı
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
+// public/ajax/check_new_messages.php
+require_once __DIR__.'/../../includes/init.php';
 
 header('Content-Type: application/json');
 

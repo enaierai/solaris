@@ -1,14 +1,7 @@
 <?php
 
 // public/ajax/process_photo.php (NİHAİ VE TAM VERSİYON)
-
-session_start();
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
+require_once __DIR__.'/../../includes/init.php';
 // YENİ: Sadece PostModel'i dahil etmemiz yeterli olacak.
 include_once __DIR__.'/../../includes/models/PostModel.php';
 

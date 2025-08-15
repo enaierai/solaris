@@ -8,11 +8,8 @@
 | çeker. Ana sayfadaki konuşma listesini dinamik olarak güncellemek için kullanılır.
 |
 */
-session_start();
+require_once __DIR__.'/../../includes/init.php';
 header('Content-Type: application/json');
-
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
 
 $response = ['success' => false, 'message' => '', 'conversations' => []];
 

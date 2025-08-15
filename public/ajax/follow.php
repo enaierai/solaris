@@ -1,10 +1,7 @@
 <?php
 
 // public/ajax/follow.php
-session_start();
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
+require_once __DIR__.'/../../includes/init.php';
 include_once __DIR__.'/../../includes/models/UserModel.php';
 include_once __DIR__.'/../../includes/models/NotificationModel.php'; // YENİ
 

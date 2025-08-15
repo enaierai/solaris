@@ -28,7 +28,7 @@ include_once __DIR__.'/includes/header.php';
 switch ($page_name) {
     case 'home': // Ana sayfa (eski index.php)
         include __DIR__.'/includes/logic/index.logic.php';
-        include __DIR__.'/public/pages/home.php';
+        include __DIR__.'/public/home.php';
         break;
 
     case 'dashboard':

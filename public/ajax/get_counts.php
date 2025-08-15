@@ -1,15 +1,7 @@
 <?php
 
-// Bu dosya, okunmamış bildirim ve mesaj sayısını JSON olarak döndürür.
-// CSRF koruması için session başlatılır.
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
-// Güvenli dosya yolları
-// 'ajax' klasöründen çıkıp ana 'solaris' klasöründeki 'includes' klasörüne erişiyoruz.
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
+// public/ajax/get_counts.php
+require_once __DIR__.'/../../includes/init.php';
 
 header('Content-Type: application/json');
 

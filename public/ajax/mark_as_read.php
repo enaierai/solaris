@@ -1,13 +1,7 @@
 <?php
 
 // public/ajax/mark_as_read.php
-
-session_start();
-
-// Projenin standart dosyalarını dahil et
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-
+require_once __DIR__.'/../../includes/init.php';
 header('Content-Type: application/json');
 
 // 1. Güvenlik: Kullanıcı oturumu açık mı?

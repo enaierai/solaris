@@ -1,14 +1,7 @@
 <?php
 
-error_reporting(E_ALL);
-ini_set('display_errors', 1);
-
-session_start();
-
-// Yol düzeltmesi yapıldı
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php'; // CSRF fonksiyonları için
+// public/ajax/update_bio.php
+require_once __DIR__.'/../../includes/init.php';
 
 header('Content-Type: application/json');
 

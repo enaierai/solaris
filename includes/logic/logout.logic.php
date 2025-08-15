@@ -2,11 +2,6 @@
 
 // includes/logic/logout.logic.php
 
-// Oturumu başlat, eğer zaten başlatılmamışsa
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
-
 // 1. Adım: Tüm oturum değişkenlerini temizle.
 // Bu, $_SESSION süper global dizisinin içini boşaltır.
 $_SESSION = [];

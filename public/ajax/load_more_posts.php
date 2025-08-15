@@ -1,11 +1,7 @@
 <?php
 
 // public/ajax/load_more_posts.php (NİHAİ VE TAM VERSİYON)
-
-session_start();
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
+require_once __DIR__.'/../../includes/init.php';
 include_once __DIR__.'/../../includes/models/PostModel.php';
 include_once __DIR__.'/../../includes/models/CommentModel.php';
 

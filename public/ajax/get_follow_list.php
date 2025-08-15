@@ -1,10 +1,7 @@
 <?php
 
 // public/ajax/get_follow_list.php (NİHAİ VE TAM VERSİYON)
-
-session_start();
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
+require_once __DIR__.'/../../includes/init.php';
 // YENİ: Artık doğrudan UserModel'ı kullanıyoruz.
 include_once __DIR__.'/../../includes/models/UserModel.php';
 

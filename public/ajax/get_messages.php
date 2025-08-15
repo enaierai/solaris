@@ -1,10 +1,7 @@
 <?php
 
 // public/ajax/get_messages.php (NİHAİ VE TAM VERSİYON)
-
-session_start();
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
+require_once __DIR__.'/../../includes/init.php';
 include_once __DIR__.'/../../includes/models/PostModel.php'; // getPostPreviewById için gerekli
 include_once __DIR__.'/../../includes/models/MessageModel.php'; // Yeni modelimiz
 

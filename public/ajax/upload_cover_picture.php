@@ -1,13 +1,7 @@
 <?php
 
-session_start();
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php'; // CSRF ve diğer yardımcı fonksiyonlar için
+// public/ajax/upload_cover_picture.php
+require_once __DIR__.'/../../includes/init.php';
 
 header('Content-Type: application/json');
 

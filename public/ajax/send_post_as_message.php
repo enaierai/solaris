@@ -1,11 +1,7 @@
 <?php
 
 // public/ajax/send_post_as_message.php (NİHAİ VE TAM VERSİYON)
-
-session_start();
-include_once __DIR__.'/../../includes/config.php';
-include_once __DIR__.'/../../includes/db.php';
-include_once __DIR__.'/../../includes/helpers.php';
+require_once __DIR__.'/../../includes/init.php';
 include_once __DIR__.'/../../includes/models/MessageModel.php';
 include_once __DIR__.'/../../includes/models/NotificationModel.php';
 
