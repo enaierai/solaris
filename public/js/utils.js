@@ -196,3 +196,10 @@ function updateFollowerCount(change) {
         el.textContent = Math.max(0, count + change);
     }
 }
+function updateFollowingCount(change) {
+    const el = document.getElementById("followingCount");
+    if (el) {
+        let count = parseInt(el.textContent) || 0;
+        el.textContent = Math.max(0, count + change);
+    }
+}

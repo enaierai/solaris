@@ -73,6 +73,24 @@ try {
                 throw new Exception('Takipçi çıkarılamadı.');
             }
             break;
+        case 'get_follow_list':
+            $target_user_id = intval($input_data['user_id'] ?? 0);
+            $type = $input_data['type'] ?? 'followers'; // 'followers' veya 'following'
+
+            // Model'deki süper fonksiyonumuzu çağırıyoruz
+            $users = getFollowList($conn, $target_user_id, $type);
+
+            echo json_encode(['success' => true, 'users' => $users]);
+            break;
+
+        case 'get_likers':
+            $post_id = intval($input_data['post_id'] ?? 0);
+
+            // Model'deki fonksiyonu çağırıyoruz
+            $likers = getLikersForPost($conn, $post_id);
+
+            echo json_encode(['success' => true, 'likers' => $likers]);
+            break;
 
         default:
             throw new Exception('Geçersiz kullanıcı eylemi.');
