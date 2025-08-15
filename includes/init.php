@@ -7,8 +7,8 @@ ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
 // 1. TEMEL AYARLAR VE YARDIMCILAR
-require_once __DIR__.'/../config/config.php';
-require_once __DIR__.'/../config/db.php';
+require_once __DIR__.'/../includes/config.php';
+require_once __DIR__.'/../includes/db.php';
 require_once __DIR__.'/../includes/helpers.php';
 
 // 2. OTURUM KONTROLÜ

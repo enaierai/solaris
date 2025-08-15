@@ -4,7 +4,7 @@
 
 // Kullanıcı giriş yapmamışsa login sayfasına yönlendir
 if (!isset($_SESSION['user_id'])) {
-    header('Location: '.BASE_URL.'public/pages/login.php');
+    header('Location: '.BASE_URL.'login');
     exit;
 }
 

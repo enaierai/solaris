@@ -1,21 +1,18 @@
 <?php
 
-// includes/logic/index.logic.php (NİHAİ VE TAM VERSİYON)
+// includes/logic/index.logic.php (YENİ HALİ)
 
+// SİLİNDİ: init.php'de zaten çağrıldığı için tüm eski require/include'lar kaldırıldı.
+// FAZ 2 NOTU: Bu Model'ler init.php'ye taşınarak bu dosya daha da temizlenebilir.
 include_once __DIR__.'/../models/UserModel.php';
 include_once __DIR__.'/../models/PostModel.php';
 include_once __DIR__.'/../models/CommentModel.php';
 
-$is_logged_in = isset($_SESSION['user_id']);
-$current_user_id = $is_logged_in ? $_SESSION['user_id'] : null;
 
-// --- BURASI ÖNEMLİ ---
-// Sayfa ilk açıldığında kaç gönderi yükleneceğini buradan ayarla.
-// Deneme için 10 yaptın, bu harika. Normalde 20-25 arası idealdir.
 define('INITIAL_POST_COUNT', 10);
 
 $followed_ids = [];
-if ($is_logged_in) {
+if ($is_logged_in && $current_user_id) {
     $followed_stmt = $conn->prepare('SELECT following_id FROM follows WHERE follower_id = ?');
     $followed_stmt->bind_param('i', $current_user_id);
     $followed_stmt->execute();
@@ -26,10 +23,10 @@ if ($is_logged_in) {
     $followed_stmt->close();
 }
 
-// DÜZELTME: İlk sayfa yüklemesi için 25 gönderi istiyoruz.
-$initial_limit = 10;
+// Ana sayfayı besleyecek olan gönderileri çekiyoruz.
 $posts = getFeedPosts($conn, $current_user_id, $followed_ids, INITIAL_POST_COUNT, 0);
 
+// Çekilen gönderilerin yorumlarını da alıp onlara ekliyoruz.
 if (!empty($posts)) {
     $post_ids = array_map(fn ($p) => $p['post_id'], $posts);
     $comments_by_post = getCommentsForPosts($conn, $post_ids);

@@ -1,9 +1,10 @@
 <?php
-// public/pages/profile.php (NİHAİ VE TAM VERSİYON)
-include_once __DIR__.'/../../includes/logic/profile.logic.php';
-include_once __DIR__.'/../../includes/header.php';
-?>
+if (!$user_data) {
+    echo '<div class="container mt-5"><div class="alert alert-danger text-center">Aradığınız kullanıcı bulunamadı.</div></div>';
 
+    return; // Sayfanın geri kalanının işlenmesini durdurur.
+}
+?>
 <div class="container my-4">
     <div class="profile-header">
         <div class="profile-cover-container">
@@ -27,23 +28,21 @@ include_once __DIR__.'/../../includes/header.php';
             </div>
             <?php if (!$is_owner && $is_logged_in) { ?>
                 <div class="profile-actions mt-3">
-    <?php if (!$is_owner && $is_logged_in) { ?>
-        <?php if (!$is_blocked) { ?>
-            <button class="btn <?php echo $is_following ? 'btn-outline-secondary' : 'btn-primary'; ?> rounded-pill follow-button" 
-                    data-following-id="<?php echo $profile_user_id; ?>" 
-                    data-is-following="<?php echo $is_following ? 'true' : 'false'; ?>">
-                <?php echo $is_following ? 'Takibi Bırak' : 'Takip Et'; ?>
-            </button>
-            <a href="<?php echo BASE_URL; ?>public/pages/messages.php?user=<?php echo htmlspecialchars($user_data['username']); ?>" class="btn btn-outline-primary rounded-pill">Mesaj Gönder</a>
-        <?php } ?>
+                    <?php if (!$is_blocked) { ?>
+                        <button class="btn <?php echo $is_following ? 'btn-outline-secondary' : 'btn-primary'; ?> rounded-pill follow-button" 
+                                data-following-id="<?php echo $profile_user_id; ?>" 
+                                data-is-following="<?php echo $is_following ? 'true' : 'false'; ?>">
+                            <?php echo $is_following ? 'Takibi Bırak' : 'Takip Et'; ?>
+                        </button>
+                        <a href="<?php echo BASE_URL; ?>messages?user=<?php echo htmlspecialchars($user_data['username']); ?>" class="btn btn-outline-primary rounded-pill">Mesaj Gönder</a>
+                    <?php } ?>
 
-        <button class="btn btn-outline-danger rounded-pill block-user-button" 
-                data-blocked-id="<?php echo $profile_user_id; ?>" 
-                data-is-blocked="<?php echo $is_blocked ? 'true' : 'false'; ?>">
-            <?php echo $is_blocked ? 'Engeli Kaldır' : 'Engelle'; ?>
-        </button>
-    <?php } ?>
-</div>
+                    <button class="btn btn-outline-danger rounded-pill block-user-button" 
+                            data-blocked-id="<?php echo $profile_user_id; ?>" 
+                            data-is-blocked="<?php echo $is_blocked ? 'true' : 'false'; ?>">
+                        <?php echo $is_blocked ? 'Engeli Kaldır' : 'Engelle'; ?>
+                    </button>
+                </div>
             <?php } ?>
         </div>
     </div>
@@ -51,15 +50,7 @@ include_once __DIR__.'/../../includes/header.php';
     <hr class="my-4">
 
     <ul class="nav nav-pills justify-content-center mb-4" id="profileTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="posts-tab" data-bs-toggle="tab" data-bs-target="#posts-tab-pane" type="button"><i class="fas fa-th me-2"></i>Gönderiler</button>
-        </li>
-        <?php if ($is_owner) { ?>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="saved-tab" data-bs-toggle="tab" data-bs-target="#saved-tab-pane" type="button"><i class="far fa-bookmark me-2"></i>Kaydedilenler</button>
-        </li>
-        <?php } ?>
-    </ul>
+        </ul>
 
     <div class="tab-content" id="profileTabsContent">
         <div class="tab-pane fade show active" id="posts-tab-pane" role="tabpanel">
@@ -68,7 +59,8 @@ include_once __DIR__.'/../../includes/header.php';
                     <p class="text-center text-muted">Henüz hiç gönderi paylaşılmamış.</p>
                 <?php } else { ?>
                     <?php foreach ($profile_posts as $post) { ?>
-                        <?php include __DIR__.'/../../includes/templates/post_card_grid.php'; ?>
+                        <?php // Bu dosya yolu __DIR__ kullandığı için zaten doğru çalışıyor. Harika!
+                        include __DIR__.'/../../includes/templates/post_card_grid.php'; ?>
                     <?php } ?>
                 <?php } ?>
             </div>
@@ -98,4 +90,3 @@ include_once __DIR__.'/../../includes/header.php';
 .explore-card .card-img-top { width: 100%; height: 300px; object-fit: cover; }
 .media-icon { position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.5); color: white; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
 </style>
-<?php include_once __DIR__.'/../../includes/footer.php'; ?>
