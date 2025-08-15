@@ -275,53 +275,6 @@ function getLikersForPost($conn, $post_id)
 }
 
 /**
- * YENİ FONKSİYON: Belirli bir kullanıcının takipçilerini listeler.
- */
-function getFollowersForUser($conn, $user_id)
-{
-    $users = [];
-    $sql = '
-        SELECT u.id, u.username, u.profile_picture_url 
-        FROM users u 
-        JOIN follows f ON u.id = f.follower_id 
-        WHERE f.following_id = ?
-    ';
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
-    }
-    $stmt->close();
-
-    return $users;
-}
-
-/**
- * YENİ FONKSİYON: Belirli bir kullanıcının takip ettiği kişileri listeler.
- */
-function getFollowingForUser($conn, $user_id)
-{
-    $users = [];
-    $sql = '
-        SELECT u.id, u.username, u.profile_picture_url 
-        FROM users u 
-        JOIN follows f ON u.id = f.following_id 
-        WHERE f.follower_id = ?
-    ';
-    $stmt = $conn->prepare($sql);
-    $stmt->bind_param('i', $user_id);
-    $stmt->execute();
-    $result = $stmt->get_result();
-    while ($row = $result->fetch_assoc()) {
-        $users[] = $row;
-    }
-    $stmt->close();
-
-    return $users;
-}
-/**
  * YENİ FONKSİYON: Bir kullanıcının başka bir kullanıcıyı engellemesini sağlar.
  */
 function blockUser($conn, $blocker_id, $blocked_id)
@@ -346,22 +299,6 @@ function unblockUser($conn, $blocker_id, $blocked_id)
 
     return $stmt->execute();
 }
-
-/**
- * YENİ FONKSİYON: Bir kullanıcının diğeri tarafından engellenip engellenmediğini
- * (veya tam tersini) kontrol eder.
- */
-function checkBlockStatus($conn, $user1_id, $user2_id)
-{
-    $stmt = $conn->prepare('
-        SELECT blocker_id FROM blocks 
-        WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)
-    ');
-    $stmt->bind_param('iiii', $user1_id, $user2_id, $user2_id, $user1_id);
-    $stmt->execute();
-
-    return $stmt->get_result()->num_rows > 0;
-}
 /**
  * YENİ FONKSİYON: Bir kullanıcının engellediği ve onu engelleyen
  * tüm kullanıcıların ID'lerini bir dizi olarak döndürür.
@@ -385,6 +322,173 @@ function getBlockedUserIds($conn, $current_user_id)
 
     return $blocked_ids;
 }
+/**
+ * YENİ VE AKILLI FONKSİYON: Bir kullanıcının başka bir kullanıcıya olan takip durumunu değiştirir (takip et/bırak).
+ * İşlem sonucunda gerekli bildirimleri oluşturur veya siler.
+ *
+ * @param mysqli $conn Veritabanı bağlantı nesnesi
+ *
+ * @return string|false başarılıysa yapılan işlemi ('followed' veya 'unfollowed'), değilse false döner
+ */
+function toggleFollowUser($conn, $follower_id, $following_id)
+{
+    // Kendi kendini takip etmeyi engelle
+    if ($follower_id == $following_id) {
+        return false;
+    }
+
+    // Engelleme durumu var mı diye iki yönlü kontrol et
+    if (checkBlockStatus($conn, $follower_id, $following_id)) {
+        return false;
+    }
+
+    $is_currently_following = isFollowing($conn, $follower_id, $following_id);
+
+    if ($is_currently_following) {
+        // Zaten takip ediyorsa, takibi bırak
+        if (unfollowUser($conn, $follower_id, $following_id)) {
+            // DÜZELTME: Takip bildiriminin gönderi ID'si olmadığı için 5. argüman olarak null gönderiyoruz.
+            deleteNotification($conn, $following_id, $follower_id, 'follow', null);
+
+            return 'unfollowed';
+        }
+    } else {
+        // Takip etmiyorsa, takip et
+        if (followUser($conn, $follower_id, $following_id)) {
+            // Takip edildiğine dair bildirim oluştur
+            $follower_username = $_SESSION['username'] ?? 'Bir kullanıcı';
+            $notification_text = htmlspecialchars($follower_username).' sizi takip etmeye başladı.';
+            // DÜZELTME: Takip bildiriminin gönderi ID'si olmadığı için 6. argüman olarak null gönderiyoruz.
+            createNotification($conn, $following_id, $follower_id, 'follow', $notification_text, null);
+
+            return 'followed';
+        }
+    }
+
+    return false; // İşlem başarısız olduysa
+}
+/**
+ * YENİ VE AKILLI FONKSİYON: Bir kullanıcının başka bir kullanıcıya olan engelleme durumunu değiştirir (engelle/kaldır).
+ * Engelleme durumunda, aralarındaki takip ilişkisini de sonlandırır.
+ *
+ * @param mysqli $conn       Veritabanı bağlantı nesnesi
+ * @param int    $blocker_id Engelleme işlemini yapan kullanıcı ID'si
+ * @param int    $blocked_id Engellenen kullanıcı ID'si
+ *
+ * @return string|false başarılıysa yapılan işlemi ('blocked' veya 'unblocked'), değilse false döner
+ */
+function toggleBlockUser($conn, $blocker_id, $blocked_id)
+{
+    if ($blocker_id == $blocked_id) {
+        return false; // Kendi kendini engelleme
+    }
+
+    $is_currently_blocked = isUserBlockedBy($conn, $blocker_id, $blocked_id);
+
+    if ($is_currently_blocked) {
+        // Zaten engelliyse, engeli kaldır
+        if (unblockUser($conn, $blocker_id, $blocked_id)) {
+            return 'unblocked';
+        }
+    } else {
+        // Engelli değilse, engelle
+        if (blockUser($conn, $blocker_id, $blocked_id)) {
+            // Engelleme durumunda karşılıklı takipleşmeyi bitir
+            unfollowUser($conn, $blocker_id, $blocked_id);
+            unfollowUser($conn, $blocked_id, $blocker_id);
+
+            return 'blocked';
+        }
+    }
+
+    return false;
+}
+// isUserBlockedBy fonksiyonu muhtemelen yok, onu da ekleyelim.
+// Bu, sadece tek yönlü kontrol eder: $blocker_id, $blocked_id'yi engelliyor mu?
+function isUserBlockedBy($conn, $blocker_id, $blocked_id)
+{
+    $stmt = $conn->prepare('SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = ?');
+    $stmt->bind_param('ii', $blocker_id, $blocked_id);
+    $stmt->execute();
+
+    return $stmt->get_result()->num_rows > 0;
+}
+/**
+ * YENİ FONKSİYON: Bir kullanıcının, kendi takipçilerinden birini çıkarmasını sağlar.
+ *
+ * @param mysqli $conn                  Veritabanı bağlantı nesnesi
+ * @param int    $profile_owner_id      İşlemi yapan (profil sahibi) kullanıcı ID'si
+ * @param int    $follower_id_to_remove Çıkarılacak takipçinin ID'si
+ *
+ * @return bool silme işlemi başarılıysa true, değilse false döner
+ */
+function removeFollower($conn, $profile_owner_id, $follower_id_to_remove)
+{
+    // Bir kullanıcı sadece kendi takipçisini çıkarabilir.
+    // Bu fonksiyon, bu mantığı zorunlu kılar.
+    $stmt = $conn->prepare('DELETE FROM follows WHERE follower_id = ? AND following_id = ?');
+    $stmt->bind_param('ii', $follower_id_to_remove, $profile_owner_id);
+
+    return $stmt->execute();
+}
+/**
+ * YENİ SÜPER FONKSİYON: Bir kullanıcının takipçilerini VEYA takip ettiklerini listeler.
+ * Hangi listeyi getireceği, $type parametresi ile belirlenir.
+ *
+ * @param mysqli $conn    Veritabanı bağlantı nesnesi
+ * @param int    $user_id Listesi alınacak kullanıcı ID'si
+ * @param string $type    'followers' (takipçiler) veya 'following' (takip edilenler)
+ *
+ * @return array Kullanıcıları içeren bir dizi
+ */
+function getFollowList($conn, $user_id, $type = 'followers')
+{
+    $users = [];
+
+    // $type parametresine göre sorgunun hangi sütunları seçeceğini belirliyoruz
+    $join_on_column = ($type === 'followers') ? 'f.follower_id' : 'f.following_id';
+    $where_column = ($type === 'followers') ? 'f.following_id' : 'f.follower_id';
+
+    $sql = "
+        SELECT u.id, u.username, u.profile_picture_url 
+        FROM users u 
+        JOIN follows f ON u.id = $join_on_column 
+        WHERE $where_column = ?
+    ";
+
+    $stmt = $conn->prepare($sql);
+    $stmt->bind_param('i', $user_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+
+    while ($row = $result->fetch_assoc()) {
+        $users[] = $row;
+    }
+    $stmt->close();
+
+    return $users;
+}
+/**
+ * YENİ SÜPER FONKSİYON: İki kullanıcı arasındaki engelleme durumunu kontrol eder.
+ *
+ * @param string $direction 'oneway' (sadece user1'in user2'yi engelleyip engellemediği) veya 'both' (karşılıklı)
+ */
+function checkBlockStatus($conn, $user1_id, $user2_id, $direction = 'both')
+{
+    if ($direction === 'oneway') {
+        $sql = 'SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = ?';
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('ii', $user1_id, $user2_id);
+    } else { // 'both' (varsayılan)
+        $sql = 'SELECT 1 FROM blocks WHERE (blocker_id = ? AND blocked_id = ?) OR (blocker_id = ? AND blocked_id = ?)';
+        $stmt = $conn->prepare($sql);
+        $stmt->bind_param('iiii', $user1_id, $user2_id, $user2_id, $user1_id);
+    }
+    $stmt->execute();
+
+    return $stmt->get_result()->num_rows > 0;
+}
+
 // Gelecekte kullanıcıyla ilgili diğer fonksiyonlar buraya eklenebilir:
 // function createUser(...) { ... }
 // function updateUserEmail(...) { ... }

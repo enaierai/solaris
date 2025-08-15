@@ -53,9 +53,9 @@ document.addEventListener("DOMContentLoaded", function() {
             }
         });
     }
-
-    setupImageUpload('changeProfilePictureBtn', 'profilePictureInput', `${BASE_URL}public/ajax/upload_profile_picture.php`, 'avatar');
-    setupImageUpload('changeCoverPictureBtn', 'coverPictureInput', `${BASE_URL}public/ajax/upload_cover_picture.php`, 'cover');
+// YENİ: İstekleri yeni ve merkezi profile_handler.php'ye yönlendiriyoruz.
+setupImageUpload('changeProfilePictureBtn', 'profilePictureInput', `${BASE_URL}public/ajax/profile_handler.php`, 'avatar');
+setupImageUpload('changeCoverPictureBtn', 'coverPictureInput', `${BASE_URL}public/ajax/profile_handler.php`, 'cover');
 
     // -----------------------------------------------------------
     // PROFİL SEKMELERİ
@@ -113,8 +113,11 @@ document.addEventListener("DOMContentLoaded", function() {
             saveBioBtn.disabled = true;
             saveBioBtn.innerHTML = '<span class="spinner-border spinner-border-sm"></span> Kaydediliyor...';
 
-            sendAjaxRequest(`${BASE_URL}public/ajax/update_bio.php`, { bio: newBio },
-                (data) => {
+            sendAjaxRequest(`${BASE_URL}public/ajax/profile_handler.php`, 
+                { 
+                    action: 'update_bio', // <-- Ne yapmak istediğimizi belirtiyoruz
+                    bio: newBio 
+                },                (data) => {
                     if (data.success) {
                         bioDisplay.innerHTML = data.new_bio.replace(/\n/g, "<br>");
                         bioEditForm.style.display = "none";
@@ -131,54 +134,7 @@ document.addEventListener("DOMContentLoaded", function() {
         });
     }
 
-    // -----------------------------------------------------------
-    // TAKİP / TAKİPTEN ÇIKMA
-    // -----------------------------------------------------------
-    function handleFollowClick(e) {
-        const btn = e.currentTarget;
-        if (btn.dataset.loading === "true") return;
-
-        const followingId = btn.dataset.followingId;
-        if (!followingId) return;
-
-        const isFollowing = btn.dataset.isFollowing === "true";
-        const originalContent = btn.innerHTML;
-        btn.disabled = true;
-        btn.dataset.loading = "true";
-        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-
-        const url = isFollowing ? `${BASE_URL}public/ajax/unfollow.php` : `${BASE_URL}public/ajax/follow.php`;
-
-        sendAjaxRequest(url, { following_id: followingId },
-            (data) => {
-                if (data.success) {
-                    if (data.action === "followed") {
-                        btn.classList.replace("btn-primary", "btn-outline-secondary");
-                        btn.innerHTML = '<i class="fas fa-user-check"></i> Takip Ediliyor';
-                        btn.dataset.isFollowing = "true";
-                        updateFollowerCount(1);
-                    } else if (data.action === "unfollowed") {
-                        btn.classList.replace("btn-outline-secondary", "btn-primary");
-                        btn.innerHTML = '<i class="fas fa-user-plus"></i> Takip Et';
-                        btn.dataset.isFollowing = "false";
-                        updateFollowerCount(-1);
-                    }
-                } else {
-                    btn.innerHTML = originalContent;
-                }
-            },
-            (error) => {
-                btn.innerHTML = originalContent;
-            },
-            () => {
-                btn.disabled = false;
-                btn.dataset.loading = "false";
-            }
-        );
-    }
-    document.querySelectorAll(".follow-button").forEach(btn => {
-        btn.addEventListener("click", handleFollowClick);
-    });
+   
 
     // -----------------------------------------------------------
     // KULLANICI ENGELLEME / ENGELİ KALDIRMA
@@ -207,8 +163,11 @@ document.addEventListener("DOMContentLoaded", function() {
         }).then((result) => {
             if (result.isConfirmed) {
                 blockButton.disabled = true;
-                sendAjaxRequest(`${BASE_URL}public/ajax/toggle_block_user.php`, { blocked_id: blockedId },
-                    (data) => {
+                sendAjaxRequest(`${BASE_URL}public/ajax/user_handler.php`, 
+                    {
+                        action: 'toggle_block', // <-- Tek ve akıllı eylem
+                        blocked_id: blockedId
+                    },                     (data) => {
                         if (data.success) {
                             Swal.fire('Başarılı!', data.message, 'success')
                                 .then(() => window.location.reload());

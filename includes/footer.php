@@ -70,8 +70,12 @@ if (isset($page_name)) {
         case 'profile':
             echo '<script src="'.BASE_URL.'public/js/post_manage.js"></script>'; // Modal için
             echo '<script src="'.BASE_URL.'public/js/profile.js"></script>';
+            echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Modal için
             break;
-
+        case 'home':
+            echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Modal için
+            echo '<script src="'.BASE_URL.'public/js/profile.js"></script>';
+            break;
         case 'post':
             echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Beğeni, yorum, kaydetme gibi etkileşimler için
             echo '<script src="'.BASE_URL.'public/js/post_manage.js"></script>'; // Gönderi düzenleme/silme için

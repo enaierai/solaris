@@ -264,6 +264,63 @@ if (commentCountSpan) {
         );
     });
 
+ // -----------------------------------------------------------
+    // TAKİP / TAKİPTEN ÇIKMA
+    // -----------------------------------------------------------
+    function handleFollowClick(e) {
+        const btn = e.currentTarget;
+        if (btn.dataset.loading === "true") return;
+
+        const followingId = btn.dataset.followingId;
+        if (!followingId) return;
+
+        const isFollowing = btn.dataset.isFollowing === "true";
+        const originalContent = btn.innerHTML;
+        btn.disabled = true;
+        btn.dataset.loading = "true";
+        btn.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
+
+        const url = isFollowing ? `${BASE_URL}public/ajax/unfollow.php` : `${BASE_URL}public/ajax/follow.php`;
+
+        sendAjaxRequest(
+            `${BASE_URL}public/ajax/user_handler.php`, 
+            { 
+                action: 'toggle_follow', // <-- Tek ve akıllı eylem
+                following_id: followingId 
+            },
+            (data) => {
+                if (data.success) {
+                    // YENİ: Sunucudan gelen yeni takipçi/takip sayılarını alıp güncelle
+                    const followerCountEl = document.getElementById("followerCount");
+                    if (followerCountEl) followerCountEl.textContent = data.newFollowerCount;
+        
+                    if (data.action === "followed") {
+                        btn.classList.replace("btn-primary", "btn-outline-secondary");
+                        btn.innerHTML = 'Takip Ediliyor'; // Metni basitleştirebiliriz
+                        btn.dataset.isFollowing = "true";
+                    } else if (data.action === "unfollowed") {
+                        btn.classList.replace("btn-outline-secondary", "btn-primary");
+                        btn.innerHTML = 'Takip Et';
+                        btn.dataset.isFollowing = "false";
+                    }
+        
+                } else {
+                    btn.innerHTML = originalContent;
+                }
+            },
+            (error) => {
+                btn.innerHTML = originalContent;
+            },
+            () => {
+                btn.disabled = false;
+                btn.dataset.loading = "false";
+            }
+        );
+    }
+    document.querySelectorAll(".follow-button").forEach(btn => {
+        btn.addEventListener("click", handleFollowClick);
+    });
+
     // -----------------------------------------------------------
     // ŞİKAYET ETME
     // -----------------------------------------------------------
