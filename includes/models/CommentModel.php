@@ -116,3 +116,45 @@ function getSingleCommentById($conn, $comment_id)
 
     return $result;
 }
+/**
+ * YENİ FONKSİYON: Bir yorumu, sadece yetkili kullanıcıların silebilmesini sağlayarak veritabanından kaldırır.
+ * Yetki Kontrolü: İşlemi yapan kullanıcı ya yorumun sahibi olmalı ya da yorumun yapıldığı gönderinin sahibi olmalı.
+ *
+ * @param mysqli $conn       Veritabanı bağlantı nesnesi
+ * @param int    $comment_id Silinecek yorumun ID'si
+ * @param int    $user_id    Silme işlemini yapan kullanıcının ID'si
+ *
+ * @return bool silme işlemi başarılıysa true, değilse false döner
+ */
+function deleteComment($conn, $comment_id, $user_id)
+{
+    // 1. Yorumun ve ait olduğu gönderinin sahibinin ID'lerini tek bir sorguda al
+    $stmt = $conn->prepare('
+        SELECT c.user_id AS comment_owner_id, p.user_id AS post_owner_id
+        FROM comments c
+        JOIN posts p ON c.post_id = p.id
+        WHERE c.id = ?
+    ');
+    $stmt->bind_param('i', $comment_id);
+    $stmt->execute();
+    $result = $stmt->get_result();
+    $data = $result->fetch_assoc();
+    $stmt->close();
+
+    if (!$data) {
+        return false; // Yorum bulunamadı
+    }
+
+    // 2. Yetki kontrolü: Kullanıcı, yorumun sahibi veya gönderinin sahibi mi?
+    if ($user_id != $data['comment_owner_id'] && $user_id != $data['post_owner_id']) {
+        return false; // Yetki yok
+    }
+
+    // 3. Yetki varsa, yorumu sil
+    $stmt_delete = $conn->prepare('DELETE FROM comments WHERE id = ?');
+    $stmt_delete->bind_param('i', $comment_id);
+    $success = $stmt_delete->execute();
+    $stmt_delete->close();
+
+    return $success;
+}

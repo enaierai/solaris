@@ -6,6 +6,7 @@
 if (!isset($post)) {
     return;
 }
+
 $post_user_avatar = BASE_URL.'uploads/profile_pictures/'.($post['profile_picture_url'] ?? 'default_profile.png');
 if (empty($post['profile_picture_url']) || $post['profile_picture_url'] == 'default_profile.png') {
     $post_user_avatar = 'https://ui-avatars.com/api/?name='.urlencode($post['username']).'&background=random&color=fff';
@@ -16,11 +17,11 @@ $is_owner = ($is_logged_in && $current_user_id == $post['user_id']);
 <div class="card mb-4 shadow-sm text-dark rounded-4 animate__animated animate__fadeInUp">
     <div class="card-body d-flex align-items-center justify-content-between">
         <div class="d-flex align-items-center">
-            <a href="<?php echo BASE_URL; ?>public/pages/profile.php?user=<?php echo htmlspecialchars($post['username']); ?>">
+        <a href="<?php echo BASE_URL; ?>profile?user=<?php echo htmlspecialchars($post['username']); ?>">
                 <img src="<?php echo $post_user_avatar; ?>" class="rounded-circle me-3" width="45" height="45" alt="<?php echo htmlspecialchars($post['username']); ?>" style="object-fit: cover;">
             </a>
             <div>
-                <a href="<?php echo BASE_URL.'public/pages/profile.php?user='.htmlspecialchars($post['username']); ?>" class="text-dark fw-bold text-decoration-none d-block">
+            <a href="<?php echo BASE_URL; ?>profile?user=<?php echo htmlspecialchars($post['username']); ?>" class="text-dark fw-bold text-decoration-none d-block">
                     <?php echo htmlspecialchars($post['username']); ?>
                 </a>
             </div>
@@ -60,7 +61,7 @@ $is_owner = ($is_logged_in && $current_user_id == $post['user_id']);
                                         <button class="carousel-control-prev" type="button" data-bs-target="#carousel-<?php echo $post['post_id']; ?>" data-bs-slide="prev"><span class="carousel-control-prev-icon"></span></button>
                                         <button class="carousel-control-next" type="button" data-bs-target="#carousel-<?php echo $post['post_id']; ?>" data-bs-slide="next"><span class="carousel-control-next-icon"></span></button>
                                     </div>
-                                <?php } else { ?>
+                                <?php } else {   ?>
                                     <?php $single_media = $post['media'][0]; ?>
                                     <?php if ($single_media['type'] === 'video') { ?>
                                         <video controls class="card-img-top rounded-0" style="max-height:600px; object-fit:contain; background-color: #000;">
@@ -92,7 +93,7 @@ $is_owner = ($is_logged_in && $current_user_id == $post['user_id']);
         </a>
         
         <p class="mb-1">
-            <a href="<?php echo BASE_URL.'public/pages/profile.php?user='.htmlspecialchars($post['username']); ?>" class="text-dark fw-bold text-decoration-none me-2"><?php echo htmlspecialchars($post['username']); ?></a>
+            <a href="<?php echo BASE_URL; ?>profile?user=<?php echo htmlspecialchars($post['username']); ?>" class="text-dark fw-bold text-decoration-none me-2"><?php echo htmlspecialchars($post['username']); ?></a>
             <?php echo make_hashtags_clickable(htmlspecialchars($post['caption'])); ?>
         </p>
         

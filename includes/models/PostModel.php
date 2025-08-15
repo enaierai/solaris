@@ -728,3 +728,118 @@ function getPostPreviewById($conn, $post_id)
 
     return $post_preview;
 }
+/**
+ * YENİ FONKSİYON: Bir gönderiyi ve ona bağlı TÜM verileri (medya, beğeniler, yorumlar, bildirimler)
+ * güvenli bir şekilde ve sadece sahibi tarafından silinmesini sağlar.
+ * İşlemler transaction içinde yürütülür; herhangi bir adım başarısız olursa tümü geri alınır.
+ *
+ * @param mysqli $conn    Veritabanı bağlantı nesnesi
+ * @param int    $post_id Silinecek gönderinin ID'si
+ * @param int    $user_id Silme işlemini yapan kullanıcının ID'si
+ *
+ * @return bool silme işlemi tamamen başarılıysa true, değilse false döner
+ */
+function deletePost($conn, $post_id, $user_id)
+{
+    // 1. Yetki kontrolü: Bu gönderi gerçekten bu kullanıcıya mı ait?
+    $stmt = $conn->prepare('SELECT id FROM posts WHERE id = ? AND user_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $post_id, $user_id);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows === 0) {
+        $stmt->close();
+
+        return false; // Gönderi bulunamadı veya kullanıcıya ait değil.
+    }
+    $stmt->close();
+
+    // 2. Silinecek fiziksel medya dosyalarının listesini al
+    $media_files = [];
+    $media_stmt = $conn->prepare('SELECT image_url FROM post_media WHERE post_id = ?');
+    $media_stmt->bind_param('i', $post_id);
+    $media_stmt->execute();
+    $result = $media_stmt->get_result();
+    while ($row = $result->fetch_assoc()) {
+        $media_files[] = $row['image_url'];
+    }
+    $media_stmt->close();
+
+    // 3. Veritabanı bütünlüğü için transaction başlat
+    $conn->begin_transaction();
+
+    try {
+        // İlişkili tüm verileri sırayla sil
+        $conn->query("DELETE FROM comments WHERE post_id = $post_id");
+        $conn->query("DELETE FROM likes WHERE post_id = $post_id");
+        $conn->query("DELETE FROM notifications WHERE post_id = $post_id");
+        $conn->query("DELETE FROM saved_posts WHERE post_id = $post_id");
+        $conn->query("DELETE FROM post_tags WHERE post_id = $post_id");
+        $conn->query("DELETE FROM post_media WHERE post_id = $post_id");
+
+        // En son ana gönderiyi sil
+        $delete_post_stmt = $conn->prepare('DELETE FROM posts WHERE id = ?');
+        $delete_post_stmt->bind_param('i', $post_id);
+        $delete_post_stmt->execute();
+        $delete_post_stmt->close();
+
+        // 4. Veritabanı işlemleri başarılıysa, fiziksel dosyaları sunucudan sil
+        foreach ($media_files as $file) {
+            $file_path = __DIR__.'/../../uploads/posts/'.$file;
+            if (file_exists($file_path)) {
+                unlink($file_path);
+            }
+        }
+
+        // Her şey yolundaysa, değişiklikleri onayla
+        $conn->commit();
+
+        return true;
+    } catch (Exception $e) {
+        // Herhangi bir hata olursa, tüm değişiklikleri geri al
+        $conn->rollback();
+        error_log($e->getMessage()); // Hataları log dosyasına yaz
+
+        return false;
+    }
+}
+/**
+ * YENİ FONKSİYON: Bir gönderinin açıklamasını, sadece sahibi tarafından güncellenmesini sağlar.
+ * Güncelleme sonrası hashtag'leri işler ve linke çevrilmiş yeni HTML'i döndürür.
+ *
+ * @param mysqli $conn        Veritabanı bağlantı nesnesi
+ * @param int    $post_id     Güncellenecek gönderinin ID'si
+ * @param int    $user_id     Güncelleme işlemini yapan kullanıcının ID'si
+ * @param string $new_caption Yeni gönderi açıklaması
+ *
+ * @return string|false güncelleme başarılıysa yeni HTML'i, değilse false döner
+ */
+function updatePostCaption($conn, $post_id, $user_id, $new_caption)
+{
+    // 1. Yetki kontrolü: Bu gönderi gerçekten bu kullanıcıya mı ait?
+    $stmt = $conn->prepare('SELECT id FROM posts WHERE id = ? AND user_id = ? LIMIT 1');
+    $stmt->bind_param('ii', $post_id, $user_id);
+    $stmt->execute();
+    if ($stmt->get_result()->num_rows === 0) {
+        $stmt->close();
+
+        return false; // Gönderi bulunamadı veya kullanıcıya ait değil.
+    }
+    $stmt->close();
+
+    // 2. Açıklamayı güncelle
+    $update_stmt = $conn->prepare('UPDATE posts SET caption = ? WHERE id = ?');
+    $update_stmt->bind_param('si', $new_caption, $post_id);
+
+    if ($update_stmt->execute()) {
+        $update_stmt->close();
+
+        // 3. Yeni açıklamadaki hashtag'leri işle (zaten var olan fonksiyonumuzu kullanıyoruz)
+        processPostTags($conn, $post_id, $new_caption);
+
+        // 4. Linke çevrilmiş HTML'i döndür (helpers.php'deki fonksiyonu kullanıyoruz)
+        return make_hashtags_clickable(htmlspecialchars($new_caption));
+    }
+
+    $update_stmt->close();
+
+    return false; // Güncelleme başarısız oldu
+}

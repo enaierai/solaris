@@ -73,11 +73,14 @@ document.addEventListener("DOMContentLoaded", function() {
                     this.disabled = true;
                     this.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Siliniyor...';
 
-                    sendAjaxRequest(`${BASE_URL}public/ajax/delete_post.php`, { post_id: postId },
-                        (data) => {
+                    sendAjaxRequest(`${BASE_URL}public/ajax/post_handler.php`, 
+                        {
+                            action: 'delete_post', // <-- YENİ
+                            post_id: postId
+                        },                        (data) => {
                             if (data.success) {
                                 Swal.fire('Silindi!', data.message, 'success').then(() => {
-                                    window.location.href = `${BASE_URL}public/pages/profile.php?user=${postOwnerUsername}`;
+                                    window.location.href = `${BASE_URL}profile?user=${postOwnerUsername}`;
                                 });
                             } else {
                                 this.disabled = false;

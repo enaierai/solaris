@@ -34,9 +34,12 @@ document.addEventListener("DOMContentLoaded", function() {
             button.dataset.liked = "true";
         }
 
-        sendAjaxRequest(
-            `${BASE_URL}public/ajax/likes.php`, { post_id: postId },
-            (data) => { // Success
+            sendAjaxRequest(
+                `${BASE_URL}public/ajax/post_handler.php`, 
+                { 
+                    action: 'like', // <-- YENİ: Ne yapmak istediğimizi söylüyoruz
+                    post_id: postId 
+                },            (data) => { // Success
                 if (data.success) {
                     if (likeCountSpan) likeCountSpan.textContent = data.new_likes;
                     button.dataset.liked = data.action === "liked" ? "true" : "false";
@@ -96,8 +99,13 @@ document.addEventListener("DOMContentLoaded", function() {
                 submitButton.disabled = true;
                 submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
     
-                sendAjaxRequest(`${BASE_URL}public/ajax/add_comment.php`, { post_id: postId, comment_text: commentText },
-                    (data) => {
+                sendAjaxRequest(`${BASE_URL}public/ajax/post_handler.php`, 
+                    { 
+                        action: 'add_comment', // <-- YENİ
+                        post_id: postId, 
+                        comment_text: commentText 
+                    },
+                        (data) => {
                         if (data.success && data.comment_html) {
                             const commentList = document.querySelector(`#comments-${postId} .comment-list`);
                             if (commentList) {
@@ -152,14 +160,17 @@ document.addEventListener("DOMContentLoaded", function() {
                 this.disabled = true;
                 if (commentItem) commentItem.style.opacity = '0.5';
 
-                sendAjaxRequest(`${BASE_URL}public/ajax/delete_comment.php`, { comment_id: commentId },
-                    (data) => {
+                sendAjaxRequest(`${BASE_URL}public/ajax/post_handler.php`, 
+                    { 
+                        action: 'delete_comment', // <-- YENİ
+                        comment_id: commentId 
+                    },                    (data) => {
                         if (data.success) {
                             if (commentItem) commentItem.remove();
-                            const commentCountSpan = document.querySelector(`.comment-toggle-button[data-post-id="${postId}"] .comment-count`);
-                            if (commentCountSpan) {
-                                commentCountSpan.textContent = Math.max(0, parseInt(commentCountSpan.textContent) - 1);
-                            }
+                            const commentCountSpan = document.querySelector(`#comment-counter-${postId} .comment-count`);
+if (commentCountSpan) {
+    commentCountSpan.textContent = Math.max(0, parseInt(commentCountSpan.textContent) - 1);
+}
                             Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: 'Yorum silindi', showConfirmButton: false, timer: 1500 });
                         } else {
                             if (commentItem) commentItem.style.opacity = '1';
@@ -201,8 +212,8 @@ document.addEventListener("DOMContentLoaded", function() {
             // Eğer yorumlar daha önce yüklenmediyse yükle
             if (!commentsContainer.dataset.loaded) {
                 commentsContainer.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
-                fetch(`${BASE_URL}public/ajax/get_comments.php?post_id=${postId}`)
-                    .then(res => res.text())
+                fetch(`${BASE_URL}public/ajax/post_handler.php?action=get_comments&post_id=${postId}`) // <-- YENİ
+                .then(res => res.text())
                     .then(html => {
                         commentsContainer.innerHTML = html;
                         commentsContainer.dataset.loaded = "true";
@@ -230,8 +241,11 @@ document.addEventListener("DOMContentLoaded", function() {
         const postId = saveButton.dataset.postId;
         const bookmarkIcon = saveButton.querySelector('i.fa-bookmark');
 
-        sendAjaxRequest(`${BASE_URL}public/ajax/toggle_save_post.php`, { post_id: postId },
-            (data) => {
+        sendAjaxRequest(`${BASE_URL}public/ajax/post_handler.php`, 
+            { 
+                action: 'save', // <-- YENİ
+                post_id: postId 
+            },            (data) => {
                 if (data.success) {
                     if (data.action === 'saved') {
                         saveButton.dataset.saved = 'true';

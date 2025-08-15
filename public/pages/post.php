@@ -1,7 +1,13 @@
 <?php
 // public/pages/post.php (DÜZELTİLMİŞ)
-include_once __DIR__.'/../../includes/logic/post.logic.php';
-include_once __DIR__.'/../../includes/header.php';
+// --- YENİ KONTROL BLOĞU ---
+// Eğer logic dosyası bir gönderi bulamadıysa, hata mesajı göster ve devam etme.
+if (!$post_data) {
+    echo '<div class="container my-5"><div class="alert alert-danger text-center">Aradığınız gönderi bulunamadı veya kaldırılmış.</div></div>';
+
+    return; // Sayfanın geri kalanının işlenmesini durdurur.
+}
+// --- KONTROL BLOĞU SONU --
 ?>
 
 <div class="container my-5">
