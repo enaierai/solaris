@@ -249,46 +249,67 @@ document.addEventListener("DOMContentLoaded", function() {
         document.querySelectorAll('form.add-comment-form').forEach(form => {
             if (form.dataset.bound === "true") return;
             form.dataset.bound = "true";
+            
             form.addEventListener('submit', function(e) {
-                e.preventDefault();
+                e.preventDefault(); // Sayfa yenilenmesini engelle
+                
                 const postId = this.dataset.postId;
                 const commentInput = this.querySelector('.comment-input');
                 const commentText = commentInput.value.trim();
                 const submitButton = this.querySelector('.comment-submit-button, .btn[type="submit"]');
                 const originalButtonText = submitButton.innerHTML;
-        
+    
                 if (commentText === '') return;
+    
                 submitButton.disabled = true;
                 submitButton.innerHTML = `<span class="spinner-border spinner-border-sm"></span>`;
-        
-                sendAjaxRequest(`${BASE_URL}public/ajax/post_handler.php`, { action: 'add_comment', post_id: postId, comment_text: commentText },
+    
+                sendAjaxRequest(
+                    `${BASE_URL}public/ajax/post_handler.php`, 
+                    { 
+                        action: 'add_comment', 
+                        post_id: postId, 
+                        comment_text: commentText,
+                        csrf_token: csrfToken, // Global bir değişken olarak tanımlanmış olmalı
+                    },
                     (data) => {
                         if (data.success && data.comment_html) {
-                            const commentList = document.querySelector(`#comments-${postId} .comment-list`); // `post.php` için
-                            const commentsContainer = document.getElementById(`comments-${postId}`); // `feed.php` için
+                            const commentsContainer = document.getElementById(`comments-${postId}`);
+                            const commentList = commentsContainer.querySelector('.comment-list');
                             
-                            if (commentList) { // post.php'deki yapı
+                            if (commentList) {
                                 const noCommentsMessage = commentList.querySelector('.no-comments');
                                 if (noCommentsMessage) noCommentsMessage.remove();
-                                commentList.insertAdjacentHTML('afterbegin', data.comment_html);
-                            } else if (commentsContainer) { // feed.php'deki yapı
-                                const noCommentsMessage = commentsContainer.querySelector('.no-comments');
-                                if (noCommentsMessage) noCommentsMessage.remove();
-                                commentsContainer.insertAdjacentHTML('afterbegin', data.comment_html);
+                                
+                                commentList.insertAdjacentHTML('beforeend', data.comment_html);
+                                commentInput.value = '';
+                                
+                                // Yorum sayısını güncelle
+                                const commentCountSpan = document.querySelector(`.comment-toggle-button[data-post-id="${postId}"] .comment-count`);
+                                if (commentCountSpan) {
+                                    commentCountSpan.textContent = parseInt(commentCountSpan.textContent) + 1;
+                                }
+                                
+                                // Silme butonlarını yeniden bağla
+                                attachDeleteCommentListeners();
                             }
-
-                            commentInput.value = '';
-                    
-                            const commentCountSpan = document.querySelector(`.comment-toggle-button[data-post-id="${postId}"] .comment-count`);
-                            if (commentCountSpan) {
-                                let currentCount = parseInt(commentCountSpan.textContent, 10) || 0;
-                                commentCountSpan.textContent = currentCount + 1;
-                            }
-                            attachDeleteCommentListeners();
                         } else {
-                            Swal.fire({ icon: 'error', title: 'Hata!', text: data.message || 'Yorum eklenemedi.'});
+                            Swal.fire({ 
+                                icon: 'error', 
+                                title: 'Hata!', 
+                                text: data.message || 'Yorum eklenemedi.' 
+                            });
                         }
-                    }, null, () => {
+                    },
+                    (error) => {
+                        console.error('Yorum eklenirken hata oluştu:', error);
+                        Swal.fire({ 
+                            icon: 'error', 
+                            title: 'Bağlantı Hatası!', 
+                            text: 'Yorum eklenirken bir hata oluştu.' 
+                        });
+                    },
+                    () => {
                         submitButton.disabled = false;
                         submitButton.innerHTML = originalButtonText;
                     }

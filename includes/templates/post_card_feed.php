@@ -75,10 +75,11 @@ $is_owner = ($is_logged_in && $current_user_id == $post['user_id']);
                             </div>
                         <?php } ?>
 
-                        <div class="card-body">
+                        <div class="card-body p-3">
         <?php
-        // Bütün butonlar, yorumlar ve form artık bu tek dosyadan geliyor.
-        include __DIR__.'/post_interactive_section.php';
+        // Gerekli değişkenleri hazırlayıp, standart interaktif bölümü çağırıyoruz.
+        $post_comments = $post['comments'] ?? [];
+include __DIR__.'/post_interactive_section.php';
 ?>
     </div>
 </div>
