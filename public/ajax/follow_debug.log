@@ -1,9 +1,0 @@
---- 2025-08-11 09:44:18 ---
-follow.php'ye gelen POST verisi: Array
-(
-    [following_id] => 2
-    [csrf_token] => 016b46f21c7e3ff1a1dbb44e3a29b5020bbc4a96c5062c6a2c2b6148f21fbff7
-)
-
-Takip işlemi veritabanına başarıyla eklendi.
-HATA: Takip bildirimi oluşturulamadı.

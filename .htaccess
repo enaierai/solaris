@@ -1,11 +1,12 @@
+# Sunucunun Rewrite (Yeniden Yazma) motorunu aç
 RewriteEngine On
+# Projenin ana klasörünü belirt (Bu, XAMPP gibi alt klasörlerde çalışırken hayat kurtarır)
+RewriteBase /solaris/
 
-# Eğer istenen adres sunucuda bir dosya değilse,
+# Eğer istenen şey, var olan bir dosya DEĞİLSE...
 RewriteCond %{REQUEST_FILENAME} !-f
-
-# Eğer istenen adres sunucuda bir klasör değilse,
+# Ve eğer istenen şey, var olan bir klasör DEĞİLSE...
 RewriteCond %{REQUEST_FILENAME} !-d
 
-# O zaman tüm isteği index.php'ye yönlendir.
-# URL'deki her şeyi (?path=...) olarak index.php'ye bir parametre gibi gönderir.
-RewriteRule ^(.*)$ index.php?path=$1 [L,QSA]
+# ...o zaman gelen tüm istekleri, URL'yi bir parametre olarak ekleyerek index.php'ye yönlendir.
+RewriteRule ^(.*)$ index.php?url=$1 [L,QSA]
