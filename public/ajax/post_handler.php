@@ -115,15 +115,35 @@ try {
             break;
 
         case 'get_comments':
-            header('Content-Type: text/html');
+            // Türkçe karakterler için charset eklemek her zaman daha iyidir.
+            header('Content-Type: text/html; charset=utf-8');
+
             $post_id = intval($input_data['post_id'] ?? 0);
+            if ($post_id <= 0) {
+                echo '<p class="text-danger text-center p-3">Geçersiz gönderi.</p>';
+                exit;
+            }
+
             $comments = getCommentsForPost($conn, $post_id);
+
             if (empty($comments)) {
-                echo '<p class="text-muted no-comments small p-3 text-center">Henüz yorum yapılmamış.</p>';
+                echo '<p class="text-muted no-comments small p-3 text-center">Henüz yorum yapılmamış. İlk yorumu sen yap!</p>';
             } else {
+                // Çıktı tamponlamayı kullanarak tüm HTML'i tek seferde göndermek daha güvenilirdir.
+                ob_start();
+
+                // --- EKSİK DEĞİŞKENLERİ BURADA HAZIRLIYORUZ ---
+                $is_logged_in = true;
+                $current_user_id = $_SESSION['user_id'];
+                // Şablonun $post['user_id']'ye ihtiyacı var, bu yüzden gönderi sahibinin ID'sini alıyoruz.
+                $post = ['id' => $post_id, 'user_id' => getPostOwnerId($conn, $post_id)];
+
                 foreach ($comments as $comment) {
+                    // Artık şablonun ihtiyacı olan her şey mevcut.
                     include __DIR__.'/../../includes/templates/comment_item_template.php';
                 }
+
+                echo ob_get_clean(); // Oluşturulan tüm HTML'i ekrana bas.
             }
             exit;
 

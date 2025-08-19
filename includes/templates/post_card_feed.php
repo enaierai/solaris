@@ -75,29 +75,34 @@ $is_owner = ($is_logged_in && $current_user_id == $post['user_id']);
                             </div>
                         <?php } ?>
 
-    <div class="card-body">
-        <div class="d-flex justify-content-start align-items-center gap-3 mb-2">
+                        <div class="card-body">
+    <div class="d-flex align-items-center gap-3 mb-2 post-actions" data-post-id="<?php echo $post['post_id']; ?>">
+        <div class="d-flex align-items-center gap-1">
             <button type="button" class="btn btn-sm like-button" data-post-id="<?php echo $post['post_id']; ?>" data-liked="<?php echo $post['user_liked'] ? 'true' : 'false'; ?>">
-                <i class="<?php echo $post['user_liked'] ? 'fas text-danger' : 'far'; ?> fa-heart me-1 heart-icon"></i>
+                <i class="<?php echo $post['user_liked'] ? 'fas text-danger' : 'far'; ?> fa-heart heart-icon"></i>
             </button>
-            <button class="btn btn-sm btn-outline-secondary comment-toggle-button" data-post-id="<?php echo $post['post_id']; ?>">
-                <i class="far fa-comment-dots me-1"></i>
-            </button>
-            <button class="btn btn-sm btn-outline-secondary ms-auto save-post-button" data-post-id="<?php echo $post['post_id']; ?>" data-saved="<?php echo $post['user_saved'] ? 'true' : 'false'; ?>">
-                <i class="<?php echo $post['user_saved'] ? 'fas' : 'far'; ?> fa-bookmark"></i>
-            </button>
+            <a href="#" class="text-dark text-decoration-none view-likers" data-post-id="<?php echo $post['post_id']; ?>">
+                <span class="like-count fw-bold"><?php echo (int) $post['like_count']; ?></span>
+                <span class="ms-1">beğeni</span>
+            </a>
         </div>
         
-        <a href="#" class="fw-bold text-dark text-decoration-none d-block mb-1 view-likers" data-post-id="<?php echo $post['post_id']; ?>">
-            <span class="like-count"><?php echo (int) $post['like_count']; ?></span> beğeni
-        </a>
+        <button class="btn btn-sm btn-outline-secondary comment-toggle-button" data-post-id="<?php echo $post['post_id']; ?>">
+    <i class="far fa-comment-dots me-1"></i>
+    <span class="comment-count"><?php echo $post['comment_count'] ?? 0; ?></span>
+</button>
         
-        <p class="mb-1">
-            <a href="<?php echo BASE_URL; ?>profile?user=<?php echo htmlspecialchars($post['username']); ?>" class="text-dark fw-bold text-decoration-none me-2"><?php echo htmlspecialchars($post['username']); ?></a>
-            <?php echo make_hashtags_clickable(htmlspecialchars($post['caption'])); ?>
-        </p>
-        
-        <div class="comments-container mt-3" id="comments-<?php echo $post['post_id']; ?>" style="display: none;">
-            </div>
+        <button class="btn btn-sm btn-outline-secondary ms-auto save-post-button" data-post-id="<?php echo $post['post_id']; ?>" data-saved="<?php echo $post['user_saved'] ? 'true' : 'false'; ?>">
+            <i class="<?php echo $post['user_saved'] ? 'fas' : 'far'; ?> fa-bookmark"></i>
+        </button>
     </div>
+    
+    <p class="mb-1">
+        <a href="<?php echo BASE_URL; ?>profile?user=<?php echo htmlspecialchars($post['username']); ?>" class="text-dark fw-bold text-decoration-none me-2"><?php echo htmlspecialchars($post['username']); ?></a>
+        <?php echo make_hashtags_clickable(htmlspecialchars($post['caption'])); ?>
+    </p>
+    
+    <div class="comments-container mt-3" id="comments-<?php echo $post['post_id']; ?>" style="display: none;">
+    </div>
+</div>
 </div>

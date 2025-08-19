@@ -84,7 +84,11 @@ try {
             break;
 
         case 'get_likers':
+            // Bu işlem için giriş yapmak zorunlu değil, bu yüzden session kontrolünü burada atlayabiliriz.
             $post_id = intval($input_data['post_id'] ?? 0);
+            if ($post_id <= 0) {
+                throw new Exception('Geçersiz gönderi ID.');
+            }
 
             // Model'deki fonksiyonu çağırıyoruz
             $likers = getLikersForPost($conn, $post_id);

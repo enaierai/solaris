@@ -15,7 +15,7 @@ if (!$post_data) {
         <div class="col-lg-10 col-xl-8">
             <div class="card shadow-sm rounded-4">
                 <div class="row g-0">
-                    <div class="col-md-7">
+                <div class="col-12 col-md-7">
                         <?php if (!empty($post_media)) { ?>
                             <div id="postCarousel" class="carousel slide h-100" data-bs-ride="carousel">
                                 <div class="carousel-inner h-100">
@@ -41,7 +41,7 @@ if (!$post_data) {
                         <?php } ?>
                     </div>
 
-                    <div class="col-md-5 d-flex flex-column">
+                    <div class="col-12 col-md-5 d-flex flex-column">
                         <div class="card-header d-flex align-items-center justify-content-between">
                             <div class="d-flex align-items-center">
                                 <img src="<?php echo BASE_URL.'uploads/profile_pictures/'.htmlspecialchars($post_data['profile_picture_url'] ?? 'default_profile.png'); ?>" class="rounded-circle me-2" width="40" height="40" alt="Profil Resmi">
@@ -70,11 +70,16 @@ if (!$post_data) {
                                 </div>
                             </div>
                             <small class="text-muted d-block mb-3"><?php echo time_ago(strtotime($post_data['created_at'])); ?></small>
-                            <div class="d-flex align-items-center gap-3 mb-3">
-    <button type="button" class="btn btn-sm like-btn like-button" data-post-id="<?php echo $post_data['post_id']; ?>" data-liked="<?php echo $post_data['user_liked'] ? 'true' : 'false'; ?>">
-        <i class="<?php echo $post_data['user_liked'] ? 'fas text-danger' : 'far'; ?> fa-heart me-1 heart-icon"></i>
-        <span class="like-count"><?php echo $post_data['like_count']; ?></span>
+                            <div class="d-flex align-items-center gap-3 mb-3 post-actions" data-post-id="<?php echo $post_data['post_id']; ?>">
+                            <div class="d-flex align-items-center"> 
+                            <button type="button" class="btn btn-sm like-btn like-button" data-post-id="<?php echo $post_data['post_id']; ?>" data-liked="<?php echo $post_data['user_liked'] ? 'true' : 'false'; ?>">
+        <i class="<?php echo $post_data['user_liked'] ? 'fas text-danger' : 'far'; ?> fa-heart heart-icon"></i>
     </button>
+
+    <a href="#" class="btn btn-sm text-muted view-likers" data-post-id="<?php echo $post_data['post_id']; ?>">
+        <span class="like-count fw-bold"><?php echo $post_data['like_count']; ?></span>
+        <span class="ms-1">beğeni</span>
+    </a> </div>
 
     <div class="btn btn-sm text-muted" id="comment-counter-<?php echo $post_data['post_id']; ?>">
         <i class="far fa-comment-dots me-1"></i>

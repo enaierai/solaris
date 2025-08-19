@@ -117,15 +117,15 @@
 
             let target = null, title = '', listType = '';
             let url = `${BASE_URL}public/ajax/user_handler.php`;
-            let params = new URLSearchParams({ csrf_token: csrfToken });
+let params = new URLSearchParams({ csrf_token: csrfToken }); // CSRF token'ı GET isteğine de ekleyelim
 
-            if (likersTarget) {
-                target = likersTarget;
-                params.append('action', 'get_likers');
-                params.append('post_id', target.dataset.postId);
-                title = 'Beğenenler';
-                listType = 'likers';
-            } else if (followersTarget) {
+if (likersTarget) {
+    target = likersTarget;
+    params.append('action', 'get_likers');
+    params.append('post_id', target.dataset.postId);
+    title = 'Beğenenler';
+    listType = 'likers';
+}  else if (followersTarget) {
                 target = followersTarget;
                 params.append('action', 'get_follow_list');
                 params.append('user_id', target.dataset.userid);

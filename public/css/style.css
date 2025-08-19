@@ -402,6 +402,7 @@ header {
 .like-btn i {
     color: var(--text-muted-light);
     transition: color var(--transition-speed);
+    font-size: 1.2rem;
 }
 
 .like-btn i.fas {

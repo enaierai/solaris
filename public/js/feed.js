@@ -8,77 +8,73 @@ document.addEventListener("DOMContentLoaded", function() {
     // -----------------------------------------------------------
     // BEĞENİ SİSTEMİ
     // -----------------------------------------------------------
-    document.body.addEventListener("click", function(event) {
-        const button = event.target.closest(".like-button");
-        if (!button || button.disabled || event.target.closest('.view-likers')) return;
+   // -----------------------------------------------------------
+// BEĞENİ SİSTEMİ (YENİ VE GÜVENİLİR VERSİYON)
+// -----------------------------------------------------------
+document.body.addEventListener("click", function(event) {
+    const button = event.target.closest(".like-button");
+    // Eğer tıklanan bir like butonu değilse, işlemi durdur.
+    if (!button) return;
 
-        const postId = button.dataset.postId;
-        if (!postId) return;
+    // Butonun tekrar tekrar tıklanmasını engelle
+    button.disabled = true; 
 
-        const likedStatus = button.dataset.liked === "true";
-        const likeCountSpan = button.querySelector(".like-count");
-        const heartIcon = button.querySelector("i.fa-heart");
-        let currentLikes = likeCountSpan ? parseInt(likeCountSpan.textContent) : 0;
+    const postId = button.dataset.postId;
+    const heartIcon = button.querySelector(".heart-icon");
 
-        // Optimistic Update
-        button.disabled = true;
-        if (likedStatus) {
-            heartIcon?.classList.remove("fas", "text-danger");
-            heartIcon?.classList.add("far");
-            if (likeCountSpan) likeCountSpan.textContent = Math.max(currentLikes - 1, 0);
-            button.dataset.liked = "false";
-        } else {
-            heartIcon?.classList.remove("far");
-            heartIcon?.classList.add("fas", "text-danger");
-            if (likeCountSpan) likeCountSpan.textContent = currentLikes + 1;
-            button.dataset.liked = "true";
-        }
+    // 1. ADIM: Butondan yola çıkarak tüm aksiyonları içeren ana kapsayıcıyı bul.
+    // (post.php'de .post-actions class'ını eklediğimizi varsayıyoruz)
+    const actionsContainer = button.closest('.post-actions');
+    if (!actionsContainer) {
+        console.error('Post actions container (.post-actions) bulunamadı!');
+        button.disabled = false;
+        return;
+    }
 
-            sendAjaxRequest(
-                `${BASE_URL}public/ajax/post_handler.php`, 
-                { 
-                    action: 'like', // <-- YENİ: Ne yapmak istediğimizi söylüyoruz
-                    post_id: postId 
-                },            (data) => { // Success
-                if (data.success) {
-                    if (likeCountSpan) likeCountSpan.textContent = data.new_likes;
-                    button.dataset.liked = data.action === "liked" ? "true" : "false";
-                    heartIcon.className = `fa-heart me-1 heart-icon ${data.action === "liked" ? 'fas text-danger' : 'far'}`;
-                } else {
-                    // Rollback on server error
-                    if (likedStatus) {
-                        heartIcon?.classList.add("fas", "text-danger");
-                        heartIcon?.classList.remove("far");
-                        if (likeCountSpan) likeCountSpan.textContent = currentLikes;
-                        button.dataset.liked = "true";
-                    } else {
-                        heartIcon?.classList.remove("fas", "text-danger");
-                        heartIcon?.classList.add("far");
-                        if (likeCountSpan) likeCountSpan.textContent = currentLikes;
-                        button.dataset.liked = "false";
-                    }
-                    Swal.fire({ icon: 'error', title: 'Hata!', text: data.message || 'İşlem gerçekleştirilemedi.' });
+    // 2. ADIM: Şimdi ana kapsayıcının içindeki beğeni sayısını bul.
+    const likeCountSpan = actionsContainer.querySelector('.like-count');
+
+    // Sunucuya isteği gönder
+    sendAjaxRequest(
+        `${BASE_URL}public/ajax/post_handler.php`, 
+        { 
+            action: 'like',
+            post_id: postId 
+        },
+        (data) => { // İstek Başarılı Olduğunda
+            if (data.success) {
+                // 3. ADIM: Sunucudan gelen GÜNCEL ve DOĞRU veriyi ekrana yazdır.
+                
+                // Sayıyı güncelle
+                if (likeCountSpan) {
+                    likeCountSpan.textContent = data.new_likes;
                 }
-            },
-            (error) => { // Network error
-                // Rollback on network error
-                if (likedStatus) {
-                    heartIcon?.classList.add("fas", "text-danger");
-                    heartIcon?.classList.remove("far");
-                    if (likeCountSpan) likeCountSpan.textContent = currentLikes;
+
+                // Kalp ikonunu ve butonun durumunu güncelle
+                if (data.action === "liked") {
+                    heartIcon.classList.remove("far");
+                    heartIcon.classList.add("fas", "text-danger");
                     button.dataset.liked = "true";
                 } else {
-                    heartIcon?.classList.remove("fas", "text-danger");
-                    heartIcon?.classList.add("far");
-                    if (likeCountSpan) likeCountSpan.textContent = currentLikes;
+                    heartIcon.classList.remove("fas", "text-danger");
+                    heartIcon.classList.add("far");
                     button.dataset.liked = "false";
                 }
-            },
-            () => { // Finally
-                button.disabled = false;
+            } else {
+                // Sunucu bir hata mesajı dönerse kullanıcıya göster
+                Swal.fire({ icon: 'error', title: 'Hata!', text: data.message || 'İşlem gerçekleştirilemedi.' });
             }
-        );
-    });
+        },
+        (error) => { // Ağ Hatası Olduğunda
+            console.error("Beğenme işlemi sırasında ağ hatası oluştu:", error);
+            Swal.fire({ icon: 'error', title: 'Bağlantı Hatası!', text: 'Lütfen internet bağlantınızı kontrol edin.' });
+        },
+        () => { // Her Koşulda Çalışacak Kısım
+            // İşlem bittiğinde butonu tekrar tıklanabilir yap.
+            button.disabled = false; 
+        }
+    );
+});
 
     // -----------------------------------------------------------
     // YORUM SİSTEMİ
@@ -212,7 +208,8 @@ if (commentCountSpan) {
             // Eğer yorumlar daha önce yüklenmediyse yükle
             if (!commentsContainer.dataset.loaded) {
                 commentsContainer.innerHTML = '<div class="text-center p-3"><div class="spinner-border spinner-border-sm"></div></div>';
-                fetch(`${BASE_URL}public/ajax/post_handler.php?action=get_comments&post_id=${postId}`) // <-- YENİ
+                // csrfToken değişkeninin sayfanızda var olduğunu varsayıyoruz (genellikle footer.php'de tanımlanır).
+fetch(`${BASE_URL}public/ajax/post_handler.php?action=get_comments&post_id=${postId}&csrf_token=${csrfToken}`) // <-- YENİ
                 .then(res => res.text())
                     .then(html => {
                         commentsContainer.innerHTML = html;
@@ -225,9 +222,6 @@ if (commentCountSpan) {
             }
         }
     });
-
-    attachCommentFormHandlers();
-    attachDeleteCommentListeners();
 
 
     // -----------------------------------------------------------
@@ -390,4 +384,9 @@ if (commentCountSpan) {
         }
     });
 
+    attachCommentFormHandlers();
+    attachDeleteCommentListeners();
+
 });
+
+
