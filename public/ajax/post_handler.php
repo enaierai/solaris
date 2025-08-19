@@ -115,36 +115,33 @@ try {
             break;
 
         case 'get_comments':
-            // Türkçe karakterler için charset eklemek her zaman daha iyidir.
             header('Content-Type: text/html; charset=utf-8');
 
             $post_id = intval($input_data['post_id'] ?? 0);
             if ($post_id <= 0) {
-                echo '<p class="text-danger text-center p-3">Geçersiz gönderi.</p>';
-                exit;
+                exit('<p class="text-danger p-3">Geçersiz gönderi.</p>');
             }
 
-            $comments = getCommentsForPost($conn, $post_id);
+            $post_comments = getCommentsForPost($conn, $post_id);
 
-            if (empty($comments)) {
-                echo '<p class="text-muted no-comments small p-3 text-center">Henüz yorum yapılmamış. İlk yorumu sen yap!</p>';
-            } else {
-                // Çıktı tamponlamayı kullanarak tüm HTML'i tek seferde göndermek daha güvenilirdir.
-                ob_start();
+            // Değişkenleri şablon için hazırla
+            $is_logged_in = true;
+            $current_user_id = $_SESSION['user_id'];
+            $post = getPostDetailsById($conn, $post_id, $current_user_id); // Şablonun tüm ihtiyaçları için tam veri
+            $page_name = 'post'; // Şablonun içindeki mantığın çalışması için
 
-                // --- EKSİK DEĞİŞKENLERİ BURADA HAZIRLIYORUZ ---
-                $is_logged_in = true;
-                $current_user_id = $_SESSION['user_id'];
-                // Şablonun $post['user_id']'ye ihtiyacı var, bu yüzden gönderi sahibinin ID'sini alıyoruz.
-                $post = ['id' => $post_id, 'user_id' => getPostOwnerId($conn, $post_id)];
+            // Kutsal şablonumuzu burada da kullanıyoruz!
+            // Ama sadece yorumlar ve form kısmını alacağız.
+            ob_start();
+            include __DIR__.'/../../includes/templates/post_interactive_section.php';
+            $full_html = ob_get_clean();
 
-                foreach ($comments as $comment) {
-                    // Artık şablonun ihtiyacı olan her şey mevcut.
-                    include __DIR__.'/../../includes/templates/comment_item_template.php';
-                }
+            // Bize sadece #comments-postID içeriği lazım, onu DOM ile ayıklayalım
+            $dom = new DOMDocument();
+            @$dom->loadHTML('<?xml encoding="utf-8" ?>'.$full_html);
+            $comments_div = $dom->getElementById('comments-'.$post_id);
+            echo $dom->saveHTML($comments_div);
 
-                echo ob_get_clean(); // Oluşturulan tüm HTML'i ekrana bas.
-            }
             exit;
 
         case 'delete_post':

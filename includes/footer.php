@@ -73,8 +73,11 @@ if (isset($page_name)) {
             echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Modal için
             break;
         case 'home':
-            echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Modal için
-            echo '<script src="'.BASE_URL.'public/js/profile.js"></script>';
+        case 'index': // Hem solaris/ hem de solaris/home için çalışsın
+            echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Beğeni, Yorumlar, Kaydetme için
+            echo '<script src="'.BASE_URL.'public/js/post_manage.js"></script>'; // "Beğenenler" gibi Modalların çalışması için BU GEREKLİ
+            // Gerekirse sonsuz kaydırma için home.js de eklenebilir.
+            // echo '<script src="'.BASE_URL.'public/js/home.js"></script>';
             break;
         case 'post':
             echo '<script src="'.BASE_URL.'public/js/feed.js"></script>'; // Beğeni, yorum, kaydetme gibi etkileşimler için

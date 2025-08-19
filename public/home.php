@@ -1,7 +1,5 @@
-<?php
-// Bu dosya artık bir içerik şablonu olduğu için
-// başında veya sonunda herhangi bir include/require komutu olmamalıdır.
-?>
+<?php $page_name = 'home'; ?>
+
 <div class="row">
     <div class="col-lg-7 col-xl-8">
 
@@ -123,21 +121,3 @@ if (!empty($popular_tags)) {
         </div>
     </div>
 </div>
-
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-        document.querySelectorAll('.comment-toggle-button').forEach(btn => {
-            btn.addEventListener('click', function() {
-                const postId = this.dataset.postId;
-                const commentBox = document.getElementById(`comments-${postId}`);
-                commentBox.style.display = commentBox.style.display === 'none' ? 'block' : 'none';
-            });
-        });
-
-        // Giriş yapmamış kullanıcılar için modalı göster
-        <?php if (!$is_logged_in) { ?>
-        const loginModal = new bootstrap.Modal(document.getElementById('loginModal'));
-        loginModal.show();
-        <?php } ?>
-    });
-</script>
