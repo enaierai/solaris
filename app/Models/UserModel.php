@@ -12,8 +12,6 @@ class UserModel
 
     /**
      * Bir kullanıcıyı kullanıcı adına göre bulur.
-     *
-     * @return array|null Kullanıcı verisi veya bulunamazsa null
      */
     public function findByUsername(string $username): ?array
     {
@@ -30,8 +28,6 @@ class UserModel
 
     /**
      * Bir kullanıcıyı ID'sine göre bulur.
-     *
-     * @return array|null Kullanıcı verisi veya bulunamazsa null
      */
     public function findById(int $id): ?array
     {
@@ -48,12 +44,9 @@ class UserModel
 
     /**
      * Yeni bir kullanıcı oluşturur.
-     *
-     * @return int|false Eklenen kullanıcının ID'si veya hata durumunda false
      */
     public function create(string $username, string $email, string $hashedPassword)
     {
-        // HATA BURADAYDI: "password_hash" yerine veritabanındaki doğru sütun adı olan "password" kullanılmalı.
         $sql = 'INSERT INTO users (username, email, password, created_at) VALUES (?, ?, ?, NOW())';
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('sss', $username, $email, $hashedPassword);
@@ -66,8 +59,6 @@ class UserModel
 
     /**
      * Bir kullanıcıya takip etmediği ve en çok gönderisi olan kullanıcıları önerir.
-     *
-     * @return array Önerilen kullanıcıların dizisi
      */
     public function getSuggestedUsers(?int $current_user_id, int $limit = 5): array
     {
@@ -94,10 +85,6 @@ class UserModel
 
     /**
      * Bir kullanıcıyı kullanıcı adı VEYA e-posta adresine göre bulur.
-     *
-     * @param string $identifier Kullanıcı adı veya e-posta
-     *
-     * @return array|null Kullanıcı verisi veya bulunamazsa null
      */
     public function findByUsernameOrEmail(string $identifier): ?array
     {
@@ -124,7 +111,6 @@ class UserModel
         $result = $stmt->get_result();
         $stmt->close();
 
-        // Eğer sonuç 0'dan büyükse, kullanıcı var demektir.
         return $result->num_rows > 0;
     }
 
@@ -142,14 +128,14 @@ class UserModel
         $stats['posts'] = $stmt->get_result()->fetch_assoc()['count'] ?? 0;
         $stmt->close();
 
-        // Takipçi sayısı - DÜZELTME: COUNT(id) yerine COUNT(*) kullanılıyor.
+        // Takipçi sayısı
         $stmt = $this->db->prepare('SELECT COUNT(*) as count FROM follows WHERE following_id = ?');
         $stmt->bind_param('i', $user_id);
         $stmt->execute();
         $stats['followers'] = $stmt->get_result()->fetch_assoc()['count'] ?? 0;
         $stmt->close();
 
-        // Takip edilen sayısı - DÜZELTME: COUNT(id) yerine COUNT(*) kullanılıyor.
+        // Takip edilen sayısı
         $stmt = $this->db->prepare('SELECT COUNT(*) as count FROM follows WHERE follower_id = ?');
         $stmt->bind_param('i', $user_id);
         $stmt->execute();
@@ -161,14 +147,9 @@ class UserModel
 
     /**
      * Bir kullanıcının başka bir kullanıcıyı takip edip etmediğini kontrol eder.
-     *
-     * @param int $follower_id  Takip eden
-     * @param int $following_id Takip edilen
      */
     public function isFollowing(int $follower_id, int $following_id): bool
     {
-        // DÜZELTME: "SELECT id" yerine, sadece satırın varlığını kontrol eden "SELECT 1" kullanılıyor.
-        // Bu hem hatayı giderir hem de daha performanslıdır.
         $stmt = $this->db->prepare('SELECT 1 FROM follows WHERE follower_id = ? AND following_id = ? LIMIT 1');
         $stmt->bind_param('ii', $follower_id, $following_id);
         $stmt->execute();
@@ -176,5 +157,177 @@ class UserModel
         $stmt->close();
 
         return $result->num_rows > 0;
+    }
+
+    /**
+     * Bir kullanıcının başka bir kullanıcıyı takip etmesini sağlar.
+     */
+    public function followUser(int $follower_id, int $following_id): bool
+    {
+        if ($this->isFollowing($follower_id, $following_id)) {
+            return true; // Zaten takip ediyorsa başarılı say
+        }
+        $stmt = $this->db->prepare('INSERT INTO follows (follower_id, following_id) VALUES (?, ?)');
+        $stmt->bind_param('ii', $follower_id, $following_id);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Bir kullanıcının başka bir kullanıcıyı takibi bırakmasını sağlar.
+     */
+    public function unfollowUser(int $follower_id, int $following_id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM follows WHERE follower_id = ? AND following_id = ?');
+        $stmt->bind_param('ii', $follower_id, $following_id);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Bir kullanıcının takipçisini kaldırmasını sağlar (profil sahibi için).
+     */
+    public function removeFollower(int $profile_owner_id, int $follower_to_remove_id): bool
+    {
+        // Sadece profil sahibi, kendisini takip eden birini kaldırabilir.
+        // Yani profile_owner_id, following_id olmalı ve follower_to_remove_id, follower_id olmalı.
+        $stmt = $this->db->prepare('DELETE FROM follows WHERE following_id = ? AND follower_id = ?');
+        $stmt->bind_param('ii', $profile_owner_id, $follower_to_remove_id);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Bir kullanıcının başka bir kullanıcıyı engelleyip engellemediğini kontrol eder.
+     */
+    public function isBlocked(int $blocker_id, int $blocked_id): bool
+    {
+        $stmt = $this->db->prepare('SELECT 1 FROM blocks WHERE blocker_id = ? AND blocked_id = ? LIMIT 1');
+        $stmt->bind_param('ii', $blocker_id, $blocked_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        return $result->num_rows > 0;
+    }
+
+    /**
+     * Bir kullanıcının başka bir kullanıcıyı engellemesini sağlar.
+     */
+    public function blockUser(int $blocker_id, int $blocked_id): bool
+    {
+        if ($this->isBlocked($blocker_id, $blocked_id)) {
+            return true; // Zaten engelliyorsa başarılı say
+        }
+        // Engelleme durumunda varsa takibi bırak ve takipçiliği kaldır
+        $this->unfollowUser($blocker_id, $blocked_id); // Engelleyen, engellediğini takip ediyorsa takibi bırak
+        $this->unfollowUser($blocked_id, $blocker_id); // Engellenen, engelleyeni takip ediyorsa takibi bırak (takipçiliği kaldır)
+
+        $stmt = $this->db->prepare('INSERT INTO blocks (blocker_id, blocked_id) VALUES (?, ?)');
+        $stmt->bind_param('ii', $blocker_id, $blocked_id);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Bir kullanıcının başka bir kullanıcının engelini kaldırmasını sağlar.
+     */
+    public function unblockUser(int $blocker_id, int $blocked_id): bool
+    {
+        $stmt = $this->db->prepare('DELETE FROM blocks WHERE blocker_id = ? AND blocked_id = ?');
+        $stmt->bind_param('ii', $blocker_id, $blocked_id);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Bir kullanıcının takip ettiği kişilerin listesini döndürür.
+     */
+    public function getFollowingUsers(int $user_id, ?int $current_viewer_id = null): array
+    {
+        $sql = 'SELECT u.id, u.username, u.profile_picture_url';
+        if ($current_viewer_id) {
+            // Eğer current_viewer_id varsa, bu kullanıcının listedeki kişiyi takip edip etmediğini de döndür
+            $sql .= ', EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_followed_by_current_user';
+        }
+        $sql .= ' FROM users u
+                JOIN follows f ON u.id = f.following_id
+                WHERE f.follower_id = ?
+                ORDER BY u.username ASC';
+
+        $stmt = $this->db->prepare($sql);
+        if ($current_viewer_id) {
+            $stmt->bind_param('ii', $current_viewer_id, $user_id);
+        } else {
+            $stmt->bind_param('i', $user_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $users = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $users;
+    }
+
+    /**
+     * Bir kullanıcının takipçilerinin listesini döndürür.
+     */
+    public function getFollowers(int $user_id, ?int $current_viewer_id = null): array
+    {
+        $sql = 'SELECT u.id, u.username, u.profile_picture_url';
+        if ($current_viewer_id) {
+            // Eğer current_viewer_id varsa, bu kullanıcının listedeki kişiyi takip edip etmediğini de döndür
+            $sql .= ', EXISTS(SELECT 1 FROM follows WHERE follower_id = ? AND following_id = u.id) as is_followed_by_current_user';
+        }
+        $sql .= ' FROM users u
+                JOIN follows f ON u.id = f.follower_id
+                WHERE f.following_id = ?
+                ORDER BY u.username ASC';
+
+        $stmt = $this->db->prepare($sql);
+        if ($current_viewer_id) {
+            $stmt->bind_param('ii', $current_viewer_id, $user_id);
+        } else {
+            $stmt->bind_param('i', $user_id);
+        }
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $users = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $users;
+    }
+
+    /**
+     * Kullanıcının profil resmini günceller.
+     */
+    public function updateProfilePicture(int $userId, string $fileName): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET profile_picture_url = ? WHERE id = ?');
+        $stmt->bind_param('si', $fileName, $userId);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Kullanıcının kapak resmini günceller.
+     */
+    public function updateCoverPicture(int $userId, string $fileName): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET cover_picture_url = ? WHERE id = ?');
+        $stmt->bind_param('si', $fileName, $userId);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Kullanıcının biyografisini günceller.
+     */
+    public function updateBio(int $userId, string $newBio): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET bio = ? WHERE id = ?');
+        $stmt->bind_param('si', $newBio, $userId);
+
+        return $stmt->execute();
     }
 }

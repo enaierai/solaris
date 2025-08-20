@@ -1,5 +1,8 @@
 <?php
-// --- GÜVENLİ VE AKILLI GRID KARTI ---
+// post_card_grid.php (NİHAİ VERSİYON)
+// Bu bileşen, Controller'dan gelen $post dizisini bekler.
+// İçerisinde başka bir View çağırmaz, tüm HTML'i kendi üretir.
+
 if (!isset($post) || !is_array($post)) {
     return;
 }
@@ -10,8 +13,9 @@ $thumbnail_url = BASE_URL.'public/images/placeholder.png'; // Medyası olmayan g
 $media_type_icon = '';
 
 if ($first_media && !empty($first_media['image_url'])) {
-    $thumbnail_url = BASE_URL.'public/uploads/posts/'.htmlspecialchars($first_media['image_url']);
-    if ($first_media['media_type'] === 'video') {
+    // serve.php üzerinden güvenli bir şekilde görseli çekiyoruz
+    $thumbnail_url = BASE_URL.'serve.php?path=posts/'.htmlspecialchars($first_media['image_url']);
+    if (($first_media['media_type'] ?? '') === 'video') {
         $media_type_icon = '<i class="fas fa-play media-icon"></i>';
     } elseif (count($post['media']) > 1) {
         $media_type_icon = '<i class="fas fa-clone media-icon"></i>'; // Birden fazla medya varsa

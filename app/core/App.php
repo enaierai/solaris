@@ -10,8 +10,6 @@ class App
     {
         $url = $this->parseUrl();
 
-        // --- NİHAİ VE ÇALIŞAN YÖNLENDİRİCİ ---
-
         $routeHandled = false;
 
         // 1. ÖZEL ROTALARI KONTROL ET (En Öncelikli)
@@ -25,6 +23,54 @@ class App
                     unset($url[0]);
                     $routeHandled = true;
                     break;
+                case 'post': // PostController için özel rota
+                    $this->controller = 'PostController';
+                    if (isset($url[1])) {
+                        $this->method = $url[1]; // post/like, post/add_comment, post/get_comments, post/load_more gibi
+                        unset($url[1]);
+                    } else {
+                        $this->method = 'index'; // post/123 -> index(123)
+                    }
+                    unset($url[0]);
+                    $routeHandled = true;
+                    break;
+                case 'user': // User ile ilgili AJAX işlemleri için
+                    $this->controller = 'UserController'; // Yeni UserController oluşturulacak
+                    if (isset($url[1])) {
+                        $this->method = $url[1];
+                        unset($url[1]);
+                    }
+                    unset($url[0]);
+                    $routeHandled = true;
+                    break;
+                case 'message': // Mesajlaşma AJAX işlemleri için
+                    $this->controller = 'MessageController'; // Yeni MessageController oluşturulacak
+                    if (isset($url[1])) {
+                        $this->method = $url[1];
+                        unset($url[1]);
+                    }
+                    unset($url[0]);
+                    $routeHandled = true;
+                    break;
+                case 'notification': // Bildirim AJAX işlemleri için
+                    $this->controller = 'NotificationController'; // Yeni NotificationController oluşturulacak
+                    if (isset($url[1])) {
+                        $this->method = $url[1];
+                        unset($url[1]);
+                    }
+                    unset($url[0]);
+                    $routeHandled = true;
+                    break;
+                case 'report': // Raporlama AJAX işlemleri için
+                    $this->controller = 'ReportController'; // Yeni ReportController oluşturulacak
+                    if (isset($url[1])) {
+                        $this->method = $url[1];
+                        unset($url[1]);
+                    }
+                    unset($url[0]);
+                    $routeHandled = true;
+                    break;
+                    // Diğer özel rotalar buraya eklenebilir
             }
         }
 
@@ -38,8 +84,8 @@ class App
         require_once 'app/Controllers/'.$this->controller.'.php';
         $this->controller = new $this->controller();
 
-        // 4. METODU BELİRLE
-        if (isset($url[1]) && method_exists($this->controller, $url[1])) {
+        // 4. METODU BELİRLE (Eğer özel rota tarafından zaten belirlenmediyse)
+        if (!$routeHandled && isset($url[1]) && method_exists($this->controller, $url[1])) {
             $this->method = $url[1];
             unset($url[1]);
         }

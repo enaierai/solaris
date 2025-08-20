@@ -19,7 +19,7 @@ class CommentModel
                 FROM comments c
                 JOIN users u ON c.user_id = u.id
                 WHERE c.post_id = ?
-                ORDER BY c.created_at DESC';
+                ORDER BY c.created_at ASC'; // Yorumları eskiden yeniye sırala
         $stmt = $this->db->prepare($sql);
         $stmt->bind_param('i', $post_id);
         $stmt->execute();
@@ -64,5 +64,24 @@ class CommentModel
         $stmt_delete->bind_param('i', $comment_id);
 
         return $stmt_delete->execute();
+    }
+
+    /**
+     * Tekil bir yorumu ID'sine göre kullanıcı bilgileriyle birlikte getirir.
+     */
+    public function getSingleCommentById(int $comment_id): ?array
+    {
+        $sql = 'SELECT c.*, u.username, u.profile_picture_url 
+                FROM comments c
+                JOIN users u ON c.user_id = u.id
+                WHERE c.id = ?';
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $comment_id);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $comment = $result->fetch_assoc();
+        $stmt->close();
+
+        return $comment;
     }
 }
