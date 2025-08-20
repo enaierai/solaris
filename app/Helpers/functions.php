@@ -162,11 +162,13 @@ function get_unread_message_count($conn, $user_id)
  */
 function getUserAvatar(string $username, ?string $profile_picture_url): string
 {
+    // Eğer kullanıcıya ait bir profil resmi varsa (ve bu default resim değilse), onu kullan.
     if (!empty($profile_picture_url) && $profile_picture_url !== 'default_profile.png') {
-        // Eğer kullanıcıya ait bir profil resmi varsa, onu kullan.
-        return BASE_URL.'public/uploads/profile_pictures/'.htmlspecialchars($profile_picture_url);
+        // Güvenli `serve.php` script'ini çağırıyoruz.
+        return BASE_URL.'serve.php?path=profile_pictures/'.htmlspecialchars($profile_picture_url);
     } else {
-        // Profil resmi yoksa, isminin baş harflerinden bir avatar oluştur.
-        return 'https://ui-avatars.com/api/?name='.urlencode($username).'&background=random&color=fff&size=40';
+        // --- DÜZELTME ---
+        // Profil resmi yoksa, ui-avatars yerine bizim kendi default resmimizi göster.
+        return BASE_URL.'serve.php?path=profile_pictures/default_profile.png';
     }
 }

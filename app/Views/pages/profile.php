@@ -49,21 +49,32 @@
                 <?php if (empty($profile_posts)) { ?>
                     <div class="col-12"><p class="text-center text-muted mt-5">Henüz hiç gönderi paylaşılmamış.</p></div>
                 <?php } else { ?>
-                    <?php foreach ($profile_posts as $post) { ?>
-                        <?php $this->view('components/post_card_grid', ['post' => $post]); ?>
-                    <?php } ?>
+                    <?php
+                    // --- NİHAİ ÇÖZÜM: "HAYALET"TEN ETKİLENMEYEN FOR DÖNGÜSÜ ---
+                    $post_count_total = count($profile_posts);
+                    for ($i = 0; $i < $post_count_total; ++$i) {
+                        $post = $profile_posts[$i]; // Her döngüde elemanı indeksiyle alıyoruz
+                        $this->view('components/post_card_grid', ['post' => $post]);
+                    }
+                    ?>
                 <?php } ?>
             </div>
         </div>
+        
         <?php if ($is_owner) { ?>
         <div class="tab-pane fade" id="saved-pane">
             <div class="row row-cols-3 g-1">
                 <?php if (empty($saved_posts)) { ?>
                     <div class="col-12"><p class="text-center text-muted mt-5">Henüz hiç gönderi kaydetmedin.</p></div>
                 <?php } else { ?>
-                    <?php foreach ($saved_posts as $post) { ?>
-                        <?php $this->view('components/post_card_grid', ['post' => $post]); ?>
-                    <?php } ?>
+                    <?php
+                    // --- NİHAİ ÇÖZÜM: "HAYALET"TEN ETKİLENMEYEN FOR DÖNGÜSÜ ---
+                    $saved_count_total = count($saved_posts);
+                    for ($i = 0; $i < $saved_count_total; ++$i) {
+                        $post = $saved_posts[$i];
+                        $this->view('components/post_card_grid', ['post' => $post]);
+                    }
+                    ?>
                 <?php } ?>
             </div>
         </div>

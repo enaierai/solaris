@@ -10,24 +10,18 @@ class PostModel
         $this->db = $conn;
     }
 
-    // --- TEMEL GÖNDERİ ÇEKME METOTLARI ---
+    // --- TEMEL GÖNDERİ GETİRME METOTLARI ---
 
-    /**
-     * ID'ye göre tek bir gönderinin tüm detaylarını getirir.
-     */
     public function getPostDetailsById(int $post_id, ?int $current_user_id = null): ?array
     {
         $sql = 'SELECT p.*, u.username, u.profile_picture_url,
                 (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count,
                 (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count';
-
         if ($current_user_id) {
             $sql .= ', EXISTS(SELECT 1 FROM likes WHERE post_id = p.id AND user_id = ?) as user_liked';
             $sql .= ', EXISTS(SELECT 1 FROM saved_posts WHERE post_id = p.id AND user_id = ?) as user_saved';
         }
-
         $sql .= ' FROM posts p JOIN users u ON p.user_id = u.id WHERE p.id = ?';
-
         $stmt = $this->db->prepare($sql);
         if ($current_user_id) {
             $stmt->bind_param('iii', $current_user_id, $current_user_id, $post_id);
@@ -45,9 +39,6 @@ class PostModel
         return $post;
     }
 
-    /**
-     * Ana sayfa akışı için gönderileri çeker.
-     */
     public function getFeedPosts(?int $user_id, int $limit = 10, int $offset = 0): array
     {
         if (!$user_id) {
@@ -67,15 +58,10 @@ class PostModel
         foreach ($posts as $key => $post) {
             $posts[$key]['media'] = $this->getPostMedia($post['id']);
         }
-        // --- ANA SAYFADAKİ HAYALETİ KOVAN SİHİRLİ SATIR ---
-        // unset($post); // Referans kullanmadığımız için artık buna gerek yok.
 
         return $posts;
     }
 
-    /**
-     * Belirli bir kullanıcı ID'sine ait tüm gönderileri getirir.
-     */
     public function getPostsByUserId(int $user_id): array
     {
         $sql = 'SELECT p.*, u.username, u.profile_picture_url, (SELECT COUNT(*) FROM likes WHERE post_id = p.id) as like_count, (SELECT COUNT(*) FROM comments WHERE post_id = p.id) as comment_count FROM posts p JOIN users u ON p.user_id = u.id WHERE p.user_id = ? ORDER BY p.created_at DESC';
@@ -90,71 +76,7 @@ class PostModel
             $posts[$key]['media'] = $this->getPostMedia($post['id']);
         }
 
-        // unset($post); // Profil sayfasındaki hayaleti kovan satır
         return $posts;
-    }
-
-    /**
-     * Bir gönderiye ait resim ve videoları getirir.
-     */
-    public function getPostMedia(int $post_id): array
-    {
-        $sql = 'SELECT * FROM post_media WHERE post_id = ?';
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('i', $post_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $media = $result->fetch_all(MYSQLI_ASSOC);
-        $stmt->close();
-
-        return $media;
-    }
-
-    // --- BEĞENİ (LIKE) İŞLEMLERİ ---
-
-    public function likePost(int $user_id, int $post_id): bool
-    {
-        $this->db->query("UPDATE posts SET likes = likes + 1 WHERE id = $post_id");
-        $stmt = $this->db->prepare('INSERT INTO likes (user_id, post_id) VALUES (?, ?)');
-        $stmt->bind_param('ii', $user_id, $post_id);
-
-        return $stmt->execute();
-    }
-
-    public function unlikePost(int $user_id, int $post_id): bool
-    {
-        $this->db->query("UPDATE posts SET likes = GREATEST(0, likes - 1) WHERE id = $post_id");
-        $stmt = $this->db->prepare('DELETE FROM likes WHERE user_id = ? AND post_id = ?');
-        $stmt->bind_param('ii', $user_id, $post_id);
-
-        return $stmt->execute();
-    }
-
-    public function getLikeCount(int $post_id): int
-    {
-        $stmt = $this->db->prepare('SELECT COUNT(id) FROM likes WHERE post_id = ?');
-        $stmt->bind_param('i', $post_id);
-        $stmt->execute();
-
-        return $stmt->get_result()->fetch_row()[0] ?? 0;
-    }
-
-    // --- KAYDETME (SAVE) İŞLEMLERİ ---
-
-    public function savePost(int $user_id, int $post_id): bool
-    {
-        $stmt = $this->db->prepare('INSERT INTO saved_posts (user_id, post_id) VALUES (?, ?)');
-        $stmt->bind_param('ii', $user_id, $post_id);
-
-        return $stmt->execute();
-    }
-
-    public function unsavePost(int $user_id, int $post_id): bool
-    {
-        $stmt = $this->db->prepare('DELETE FROM saved_posts WHERE user_id = ? AND post_id = ?');
-        $stmt->bind_param('ii', $user_id, $post_id);
-
-        return $stmt->execute();
     }
 
     public function getSavedPostsByUser(int $user_id): array
@@ -171,34 +93,23 @@ class PostModel
             $posts[$key]['media'] = $this->getPostMedia($post['id']);
         }
 
-        // unset($post); // Kaydedilenler sayfasındaki hayaleti kovan satır
         return $posts;
     }
 
-    /**
-     * Veritabanındaki en popüler etiketleri getirir.
-     *
-     * @param int $limit Getirilecek etiket sayısı
-     *
-     * @return array Popüler etiketlerin dizisi
-     */
-    public function getPopularTags(int $limit = 10): array
+    public function getPostMedia(int $post_id): array
     {
-        $sql = 'SELECT name, COUNT(*) as count 
-                FROM tags 
-                GROUP BY name 
-                ORDER BY count DESC 
-                LIMIT ?';
+        $sql = 'SELECT * FROM post_media WHERE post_id = ?';
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('i', $limit);
+        $stmt->bind_param('i', $post_id);
         $stmt->execute();
         $result = $stmt->get_result();
-        $tags = $result->fetch_all(MYSQLI_ASSOC);
+        $media = $result->fetch_all(MYSQLI_ASSOC);
         $stmt->close();
 
-        return $tags;
+        return $media;
     }
-    // --- GÖNDERİ OLUŞTURMA VE SİLME ---
+
+    // --- GÖNDERİ OLUŞTURMA, GÜNCELLEME VE SİLME ---
 
     public function createPost(int $user_id, string $caption, array $uploaded_files = []): int|false
     {
@@ -219,8 +130,6 @@ class PostModel
                 $media_stmt->close();
             }
 
-            // Etiketleri işle... (Bu mantık gelecekte eklenebilir)
-
             $this->db->commit();
 
             return $post_id;
@@ -229,6 +138,23 @@ class PostModel
 
             return false;
         }
+    }
+
+    public function getPopularTags(int $limit = 10): array
+    {
+        $sql = 'SELECT name, COUNT(*) as count 
+                FROM tags 
+                GROUP BY name 
+                ORDER BY count DESC 
+                LIMIT ?';
+        $stmt = $this->db->prepare($sql);
+        $stmt->bind_param('i', $limit);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $tags = $result->fetch_all(MYSQLI_ASSOC);
+        $stmt->close();
+
+        return $tags;
     }
 
     public function deletePost(int $post_id, int $user_id): bool
