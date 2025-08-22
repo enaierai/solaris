@@ -94,7 +94,6 @@ class UserController extends Controller
             $notificationModel = $this->model('NotificationModel');
 
             try {
-                // removeFollower metodu çağrısı düzeltildi
                 if ($userModel->removeFollower($current_user_id, $follower_to_remove_id)) {
                     $notificationModel->deleteNotification($current_user_id, $follower_to_remove_id, 'follow', null);
                     $response = ['success' => true, 'message' => 'Takipçi başarıyla kaldırıldı.'];
@@ -189,6 +188,7 @@ class UserController extends Controller
                 $following_users = $userModel->getFollowingUsers($user_id_to_fetch, $current_viewer_id);
                 $response = ['success' => true, 'users' => $following_users];
             } catch (Exception $e) {
+                // Hata durumunda bile JSON yanıtı döndür
                 $response['message'] = $e->getMessage();
             }
         }
@@ -196,7 +196,7 @@ class UserController extends Controller
     }
 
     /**
-     * YENİ AJAX METODU: Kullanıcının takipçilerinin listesini döndürür (modal için).
+     * AJAX METODU: Kullanıcının takipçilerinin listesini döndürür (modal için).
      */
     public function get_followers()
     {
@@ -224,6 +224,7 @@ class UserController extends Controller
                 $followers = $userModel->getFollowers($user_id_to_fetch, $current_viewer_id);
                 $response = ['success' => true, 'users' => $followers];
             } catch (Exception $e) {
+                // Hata durumunda bile JSON yanıtı döndür
                 $response['message'] = $e->getMessage();
             }
         }

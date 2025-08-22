@@ -299,35 +299,113 @@ class UserModel
     }
 
     /**
+     * Kullanıcının e-posta adresinin başka bir kullanıcı tarafından kullanılıp kullanılmadığını kontrol eder.
+     */
+    public function isEmailTakenByAnotherUser(string $email, int $currentUserId): bool
+    {
+        $stmt = $this->db->prepare('SELECT id FROM users WHERE email = ? AND id != ? LIMIT 1');
+        $stmt->bind_param('si', $email, $currentUserId);
+        $stmt->execute();
+        $result = $stmt->get_result();
+        $stmt->close();
+
+        return $result->num_rows > 0;
+    }
+
+    /**
+     * Kullanıcının e-posta adresini günceller.
+     */
+    public function updateUserEmail(int $userId, string $newEmail): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET email = ? WHERE id = ?');
+        $stmt->bind_param('si', $newEmail, $userId);
+
+        return $stmt->execute();
+    }
+
+    /**
+     * Kullanıcının şifresini günceller.
+     */
+    public function updateUserPassword(int $userId, string $hashedPassword): bool
+    {
+        $stmt = $this->db->prepare('UPDATE users SET password = ? WHERE id = ?');
+        $stmt->bind_param('si', $hashedPassword, $userId);
+
+        return $stmt->execute();
+    }
+
+    /**
      * Kullanıcının profil resmini günceller.
      */
-    public function updateProfilePicture(int $userId, string $fileName): bool
+    public function updateProfilePicture(int $userId, array $file): array
     {
-        $stmt = $this->db->prepare('UPDATE users SET profile_picture_url = ? WHERE id = ?');
-        $stmt->bind_param('si', $fileName, $userId);
-
-        return $stmt->execute();
+        return $this->handleFileUpload($userId, $file, 'profile_pictures', 'profile_picture_url', 'default_profile.png');
     }
 
     /**
-     * Kullanıcının kapak resmini günceller.
+     * Genel dosya yükleme ve veritabanı güncelleme mantığı.
+     *
+     * @param int    $userId          Kullanıcı ID'si
+     * @param array  $file            $_FILES dizisinden gelen dosya bilgisi
+     * @param string $uploadDirName   Yükleme yapılacak klasör adı (pluralsız)
+     * @param string $dbColumnName    Veritabanında güncellenecek sütun adı
+     * @param string $defaultFileName Varsayılan dosya adı (silinmeyecek olan)
+     *
+     * @return array ['success' => bool, 'message' => string, 'new_file_name' => string|null]
      */
-    public function updateCoverPicture(int $userId, string $fileName): bool
-    {
-        $stmt = $this->db->prepare('UPDATE users SET cover_picture_url = ? WHERE id = ?');
-        $stmt->bind_param('si', $fileName, $userId);
+    private function handleFileUpload(
+        int $userId,
+        array $file,
+        string $uploadDirName,
+        string $dbColumnName,
+        string $defaultFileName
+    ): array {
+        $upload_dir = ROOT.'/storage/uploads/'.$uploadDirName.'/';
+        $allowed_types = ['jpg', 'jpeg', 'png', 'gif'];
+        $max_size = 5 * 1024 * 1024; // 5 MB
 
-        return $stmt->execute();
-    }
+        $file_extension = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+        if (!in_array($file_extension, $allowed_types)) {
+            return ['success' => false, 'message' => 'Sadece JPG, JPEG, PNG ve GIF dosyaları yüklenebilir.'];
+        }
+        if ($file['size'] > $max_size) {
+            return ['success' => false, 'message' => 'Dosya boyutu 5MB\'tan büyük olamaz.'];
+        }
 
-    /**
-     * Kullanıcının biyografisini günceller.
-     */
-    public function updateBio(int $userId, string $newBio): bool
-    {
-        $stmt = $this->db->prepare('UPDATE users SET bio = ? WHERE id = ?');
-        $stmt->bind_param('si', $newBio, $userId);
+        $new_file_name = $uploadDirName.'_'.uniqid().'.'.$file_extension;
+        $target_path = $upload_dir.$new_file_name;
 
-        return $stmt->execute();
+        try {
+            if (move_uploaded_file($file['tmp_name'], $target_path)) {
+                // Eski dosya yolunu al
+                $old_user_data = $this->findById($userId);
+                $old_file_name = $old_user_data[$dbColumnName] ?? null;
+
+                // Eski dosyayı sil (varsayılan değilse ve dosya varsa)
+                if (!empty($old_file_name) && $old_file_name !== $defaultFileName) {
+                    $old_file_path = $upload_dir.$old_file_name;
+                    if (file_exists($old_file_path) && is_file($old_file_path)) {
+                        unlink($old_file_path);
+                    }
+                }
+
+                // Veritabanını güncelle
+                $sql = "UPDATE users SET {$dbColumnName} = ? WHERE id = ?";
+                $stmt = $this->db->prepare($sql);
+                $stmt->bind_param('si', $new_file_name, $userId);
+
+                if ($stmt->execute()) {
+                    return ['success' => true, 'message' => 'Dosya başarıyla güncellendi.', 'new_file_name' => $new_file_name];
+                } else {
+                    unlink($target_path); // DB güncellemesi başarısız olursa yüklenen dosyayı sil
+
+                    return ['success' => false, 'message' => 'Veritabanı güncellenirken hata oluştu.'];
+                }
+            } else {
+                return ['success' => false, 'message' => 'Dosya sunucuya taşınırken hata oluştu.'];
+            }
+        } catch (Exception $e) {
+            return ['success' => false, 'message' => $e->getMessage()];
+        }
     }
 }

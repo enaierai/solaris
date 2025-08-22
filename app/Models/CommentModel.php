@@ -11,77 +11,72 @@ class CommentModel
     }
 
     /**
-     * Bir gönderiye ait tüm yorumları, kullanıcı bilgileriyle birlikte getirir.
+     * Belirli bir gönderiye ait yorumları çeker.
+     * Her yoruma yorum sahibinin profil resmi ve kullanıcı adını dahil eder.
      */
-    public function getCommentsForPost(int $post_id): array
+    public function getCommentsByPostId(int $postId, ?int $currentUserId = null): array
     {
-        $sql = 'SELECT c.*, u.username, u.profile_picture_url 
-                FROM comments c
-                JOIN users u ON c.user_id = u.id
-                WHERE c.post_id = ?
-                ORDER BY c.created_at ASC'; // Yorumları eskiden yeniye sırala
+        $comments = [];
+        $sql = 'SELECT 
+                    c.id, 
+                    c.user_id, 
+                    u.username, 
+                    u.profile_picture_url, 
+                    c.comment_text, 
+                    c.created_at 
+                FROM comments c 
+                JOIN users u ON c.user_id = u.id 
+                WHERE c.post_id = ? 
+                ORDER BY c.created_at ASC';
+
         $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('i', $post_id);
+        $stmt->bind_param('i', $postId);
         $stmt->execute();
         $result = $stmt->get_result();
-        $comments = $result->fetch_all(MYSQLI_ASSOC);
+        while ($row = $result->fetch_assoc()) {
+            $comments[] = $row;
+        }
         $stmt->close();
 
         return $comments;
     }
 
     /**
-     * Veritabanına yeni bir yorum ekler.
+     * Yeni bir yorum ekler.
      */
-    public function createComment(int $post_id, int $user_id, string $comment_text): int|false
+    public function addComment(int $userId, int $postId, string $commentText): ?int
     {
-        $stmt = $this->db->prepare('INSERT INTO comments (post_id, user_id, comment_text) VALUES (?, ?, ?)');
-        $stmt->bind_param('iis', $post_id, $user_id, $comment_text);
+        $stmt = $this->db->prepare('INSERT INTO comments (user_id, post_id, comment_text) VALUES (?, ?, ?)');
+        $stmt->bind_param('iis', $userId, $postId, $commentText);
         if ($stmt->execute()) {
-            return $this->db->insert_id;
+            return $stmt->insert_id;
         }
 
-        return false;
+        return null;
     }
 
     /**
-     * Bir yorumu, yetkili kullanıcı tarafından siler.
+     * Bir yorumu ID'sine göre çeker.
      */
-    public function deleteComment(int $comment_id, int $user_id): bool
+    public function getCommentById(int $commentId): ?array
     {
-        // Yetki kontrolü (Yorumun veya gönderinin sahibi mi?)
-        $stmt = $this->db->prepare('SELECT c.user_id AS comment_owner_id, p.user_id AS post_owner_id FROM comments c JOIN posts p ON c.post_id = p.id WHERE c.id = ?');
-        $stmt->bind_param('i', $comment_id);
+        $stmt = $this->db->prepare('SELECT id, user_id, post_id, comment_text, created_at FROM comments WHERE id = ? LIMIT 1');
+        $stmt->bind_param('i', $commentId);
         $stmt->execute();
-        $data = $stmt->get_result()->fetch_assoc();
+        $result = $stmt->get_result()->fetch_assoc();
         $stmt->close();
-        if (!$data || ($user_id != $data['comment_owner_id'] && $user_id != $data['post_owner_id'])) {
-            return false; // Yetki yok
-        }
 
-        // Yorumu sil
-        $stmt_delete = $this->db->prepare('DELETE FROM comments WHERE id = ?');
-        $stmt_delete->bind_param('i', $comment_id);
-
-        return $stmt_delete->execute();
+        return $result;
     }
 
     /**
-     * Tekil bir yorumu ID'sine göre kullanıcı bilgileriyle birlikte getirir.
+     * Bir yorumu siler.
      */
-    public function getSingleCommentById(int $comment_id): ?array
+    public function deleteComment(int $commentId): bool
     {
-        $sql = 'SELECT c.*, u.username, u.profile_picture_url 
-                FROM comments c
-                JOIN users u ON c.user_id = u.id
-                WHERE c.id = ?';
-        $stmt = $this->db->prepare($sql);
-        $stmt->bind_param('i', $comment_id);
-        $stmt->execute();
-        $result = $stmt->get_result();
-        $comment = $result->fetch_assoc();
-        $stmt->close();
+        $stmt = $this->db->prepare('DELETE FROM comments WHERE id = ?');
+        $stmt->bind_param('i', $commentId);
 
-        return $comment;
+        return $stmt->execute();
     }
 }

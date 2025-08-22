@@ -807,6 +807,8 @@ header {
     object-fit: cover;
     display: block;
 }
+/* .grid-overlay ve ilgili kurallar kaldırıldı */
+/*
 .grid-overlay {
     position: absolute; top: 0; left: 0; width: 100%; height: 100%;
     background: linear-gradient(to top, rgba(0,0,0,0.6) 0%, transparent 50%);
@@ -818,6 +820,7 @@ header {
 .profile-post-card:hover .grid-overlay {
     opacity: 1;
 }
+*/
 /*
 ==============================================
 Yorum Bölümü Stilleri
@@ -901,6 +904,8 @@ Yorum Bölümü Stilleri
     font-size: 1.1rem;
 }
 
+/* .post-grid-overlay ve ilgili kurallar kaldırıldı */
+/*
 .post-grid-overlay {
     position: absolute;
     top: 0;
@@ -926,6 +931,7 @@ Yorum Bölümü Stilleri
     font-size: 1.2rem;
     font-weight: bold;
 }
+*/
 
 .profile-tabs-container {
     background-color: #f8f9fa; /* Açık gri bir arka plan */

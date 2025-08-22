@@ -3,61 +3,63 @@
 class PostController extends Controller
 {
     /**
-     * Tekil gönderi sayfasını gösterir.
+     * Gönderi detay sayfasını gösterir.
      * URL'den gelen gönderi ID'sini parametre olarak alır.
      * Örnek: /post/123.
      */
     public function index($post_id = 0)
     {
-        $post_id = (int) $post_id;
+        // Eğer gönderi ID'si belirtilmemişse veya geçersizse ana sayfaya yönlendir
         if ($post_id <= 0) {
-            header('Location: ' . BASE_URL);
+            header('Location: '.BASE_URL);
             exit;
         }
 
         // Gerekli modelleri yükle
         $postModel = $this->model('PostModel');
-        $commentModel = $this->model('CommentModel');
+        $commentModel = $this->model('CommentModel'); // Yorumlar için CommentModel'i yükle
+        $userModel = $this->model('UserModel'); // Avatar için UserModel'i yükle
 
         $current_user_id = $_SESSION['user_id'] ?? null;
+        $is_logged_in = isset($current_user_id);
 
-        // Gönderi detaylarını modelden çek
-        $post_data = $postModel->getPostDetailsById($post_id, $current_user_id);
+        // Gönderi verilerini çek
+        $post_data = $postModel->getPostById((int) $post_id, $current_user_id); // post_id'yi int'e cast et
 
-        // Eğer gönderi bulunamazsa (veya engellenmişse), 404 sayfası göster
+        // Eğer gönderi bulunamazsa, 404 Not Found sayfası göster
         if (!$post_data) {
             $this->view('pages/errors/404');
+
             return;
         }
 
-        // Yorumlar artık AJAX ile yükleneceği için burada çekmiyoruz.
-        $post_comments = []; 
+        // Gönderi sahibinin ID'si
+        $post_owner_id = $post_data['user_id'];
+        $is_owner = ($is_logged_in && $current_user_id == $post_owner_id);
 
-        $is_owner = (isset($current_user_id) && $current_user_id == $post_data['user_id']);
+        // Yorumları çek (Bu kısım artık AJAX ile yükleneceği için burada çekmiyoruz, sadece JS'e bırakıyoruz)
+        // $post_comments = $commentModel->getCommentsByPostId((int)$post_id, $current_user_id);
 
-        // View'a gönderilecek tüm verileri hazırla
+        // View'a gönderilecek tüm verileri tek bir dizide topla
         $data = [
             'meta' => [
-                'meta_title' => htmlspecialchars($post_data['username']) . ': "' . substr(htmlspecialchars($post_data['caption']), 0, 50) . '..."',
-                'meta_description' => htmlspecialchars($post_data['caption']),
-                'og_image' => !empty($post_data['media']) ? BASE_URL . 'serve.php?path=posts/' . htmlspecialchars($post_data['media'][0]['image_url']) : '',
+                'meta_title' => 'Gönderi - '.htmlspecialchars(substr($post_data['caption'] ?? 'Gönderi', 0, 50)).' - Solaris',
+                'meta_description' => htmlspecialchars(substr($post_data['caption'] ?? 'Gönderi', 0, 150)),
             ],
             'post_data' => $post_data,
-            'post_comments' => $post_comments, // Boş gönderiyoruz, AJAX dolduracak
+            'post_comments' => [], // Yorumları burada boş gönderiyoruz, AJAX ile yüklenecek
             'is_owner' => $is_owner,
-            'is_logged_in' => isset($current_user_id),
+            'is_logged_in' => $is_logged_in,
             'current_user_id' => $current_user_id,
-            'page_name' => 'post',
         ];
 
-        // View'ları yükle
         $this->view('layouts/header', $data);
         $this->view('pages/post', $data);
         $this->view('layouts/footer', $data);
     }
 
     /**
-     * AJAX: Gönderiyi beğenme veya beğeniyi geri çekme işlemi.
+     * AJAX: Gönderiyi beğenme/beğenmekten vazgeçme.
      */
     public function like()
     {
@@ -68,7 +70,7 @@ class PostController extends Controller
             $input_data = $_POST;
 
             if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
-                $response['message'] = 'CSRF doğrulama başarısız.';
+                $response['message'] = 'Güvenlik hatası. Lütfen sayfayı yenileyin.';
                 echo json_encode($response);
                 exit;
             }
@@ -82,53 +84,103 @@ class PostController extends Controller
             $post_id = (int) ($input_data['post_id'] ?? 0);
 
             if ($post_id <= 0) {
-                $response['message'] = 'Geçersiz gönderi ID.';
+                $response['message'] = 'Geçersiz gönderi ID\'si.';
                 echo json_encode($response);
                 exit;
             }
 
-            $likeModel = $this->model('LikeModel');
-            $notificationModel = $this->model('NotificationModel'); // Yazım hatası düzeltildi
             $postModel = $this->model('PostModel');
+            $notificationModel = $this->model('NotificationModel'); // Bildirim için
 
             try {
-                $post_data = $postModel->getPostDetailsById($post_id);
-                if (!$post_data) {
-                    throw new Exception('Gönderi bulunamadı.');
-                }
-                $post_owner_id = $post_data['user_id'];
-
-                // Engelleme kontrolü eklenecek (şimdilik varsayılıyor)
-                // if (checkBlockStatus($conn, $user_id, $post_owner_id)) {
-                //     throw new Exception('Bu kullanıcıyla etkileşime giremezsiniz.');
-                // }
-
-                $liked_before = $likeModel->isPostLikedByUser($user_id, $post_id);
-
-                if ($liked_before) {
-                    $likeModel->removeLike($user_id, $post_id);
-                    $notificationModel->deleteNotification($post_owner_id, $user_id, 'like', $post_id);
-                    $action_taken = 'unliked';
-                } else {
-                    $likeModel->addLike($user_id, $post_id);
-                    if ($user_id != $post_owner_id) {
-                        $notificationModel->createNotification($post_owner_id, $user_id, 'like', htmlspecialchars($_SESSION['username']) . ' gönderini beğendi.', $post_id);
+                if ($postModel->isLiked($user_id, $post_id)) {
+                    // Zaten beğenmişse beğeniyi kaldır
+                    if ($postModel->unlikePost($user_id, $post_id)) {
+                        $new_likes = $postModel->getLikeCount($post_id);
+                        $response = ['success' => true, 'action' => 'unliked', 'new_likes' => $new_likes];
+                    } else {
+                        $response['message'] = 'Beğeni kaldırılamadı.';
                     }
-                    $action_taken = 'liked';
+                } else {
+                    // Beğenmemişse beğen
+                    if ($postModel->likePost($user_id, $post_id)) {
+                        $new_likes = $postModel->getLikeCount($post_id);
+                        $response = ['success' => true, 'action' => 'liked', 'new_likes' => $new_likes];
+
+                        // Bildirim oluştur
+                        $post_owner_id = $postModel->getPostOwnerId($post_id);
+                        if ($post_owner_id && $post_owner_id != $user_id) {
+                            $notificationModel->createNotification($post_owner_id, $user_id, $post_id, 'like');
+                        }
+                    } else {
+                        $response['message'] = 'Gönderi beğenilemedi.';
+                    }
                 }
-
-                $new_likes_count = $likeModel->getLikeCount($post_id);
-                $response = ['success' => true, 'new_likes' => $new_likes_count, 'action' => $action_taken];
-
             } catch (Exception $e) {
-                $response['message'] = $e->getMessage();
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
             }
         }
         echo json_encode($response);
     }
 
     /**
-     * AJAX: Yorum ekleme işlemi.
+     * AJAX: Gönderiyi kaydetme/kaydetmekten vazgeçme.
+     */
+    public function save()
+    {
+        header('Content-Type: application/json');
+        $response = ['success' => false, 'message' => 'Geçersiz istek.'];
+
+        if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+            $input_data = $_POST;
+
+            if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
+                $response['message'] = 'Güvenlik hatası. Lütfen sayfayı yenileyin.';
+                echo json_encode($response);
+                exit;
+            }
+            if (!isset($_SESSION['user_id'])) {
+                $response['message'] = 'Bu işlem için giriş yapmalısınız.';
+                echo json_encode($response);
+                exit;
+            }
+
+            $user_id = $_SESSION['user_id'];
+            $post_id = (int) ($input_data['post_id'] ?? 0);
+
+            if ($post_id <= 0) {
+                $response['message'] = 'Geçersiz gönderi ID\'si.';
+                echo json_encode($response);
+                exit;
+            }
+
+            $saveModel = $this->model('SaveModel'); // SaveModel'i yükle
+
+            try {
+                if ($saveModel->isSaved($user_id, $post_id)) {
+                    // Zaten kaydetmişse kaydı kaldır
+                    if ($saveModel->unsavePost($user_id, $post_id)) {
+                        $response = ['success' => true, 'action' => 'unsaved', 'message' => 'Gönderi kaydedilenlerden çıkarıldı.'];
+                    } else {
+                        $response['message'] = 'Kaydetme kaldırılamadı.';
+                    }
+                } else {
+                    // Kaydetmemişse kaydet
+                    if ($saveModel->savePost($user_id, $post_id)) {
+                        $response = ['success' => true, 'action' => 'saved', 'message' => 'Gönderi kaydedildi.'];
+                    } else {
+                        $response['message'] = 'Gönderi kaydedilemedi.';
+                    }
+                }
+            } catch (Exception $e) {
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
+            }
+        }
+        echo json_encode($response);
+    }
+
+    /**
+     * AJAX: Yorum ekleme.
      */
     public function add_comment()
     {
@@ -139,7 +191,7 @@ class PostController extends Controller
             $input_data = $_POST;
 
             if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
-                $response['message'] = 'CSRF doğrulama başarısız.';
+                $response['message'] = 'Güvenlik hatası. Lütfen sayfayı yenileyin.';
                 echo json_encode($response);
                 exit;
             }
@@ -153,163 +205,204 @@ class PostController extends Controller
             $post_id = (int) ($input_data['post_id'] ?? 0);
             $comment_text = trim($input_data['comment_text'] ?? '');
 
-            if ($post_id <= 0) {
-                $response['message'] = 'Geçersiz gönderi ID.';
-                echo json_encode($response);
-                exit;
-            }
-            if (empty($comment_text)) {
-                $response['message'] = 'Yorum boş bırakılamaz.';
+            if ($post_id <= 0 || empty($comment_text)) {
+                $response['message'] = 'Geçersiz gönderi ID\'si veya yorum metni boş.';
                 echo json_encode($response);
                 exit;
             }
 
             $commentModel = $this->model('CommentModel');
-            $notificationModel = $this->model('NotificationModel');
-            $postModel = $this->model('PostModel');
+            $postModel = $this->model('PostModel'); // Yorum sayısını güncellemek için
+            $userModel = $this->model('UserModel'); // Yorumu yapan kullanıcının bilgilerini almak için
+            $notificationModel = $this->model('NotificationModel'); // Bildirim için
 
             try {
-                $post_data = $postModel->getPostDetailsById($post_id);
-                if (!$post_data) {
-                    throw new Exception('Gönderi bulunamadı.');
-                }
-                $post_owner_id = $post_data['user_id'];
-
-                // Engelleme kontrolü eklenecek (şimdilik varsayılıyor)
-                // if (checkBlockStatus($conn, $user_id, $post_owner_id)) {
-                //     throw new Exception('Bu kullanıcıyla etkileşime giremezsiniz.');
-                // }
-
-                $comment_id = $commentModel->createComment($post_id, $user_id, $comment_text);
-
+                $comment_id = $commentModel->addComment($user_id, $post_id, $comment_text);
                 if ($comment_id) {
-                    if ($post_owner_id && $user_id != $post_owner_id) {
-                        $notificationModel->createNotification($post_owner_id, $user_id, 'comment', htmlspecialchars($_SESSION['username']) . ' gönderinize yorum yaptı.', $post_id);
+                    // Yorum sayısını güncelle
+                    $postModel->updateCommentCount($post_id, 1);
+
+                    // Yeni yorumun HTML'ini oluşturmak için verileri çek
+                    $new_comment_data = $commentModel->getCommentById($comment_id);
+                    $comment_user_data = $userModel->findById($new_comment_data['user_id']);
+
+                    // comment_item_template.php'yi kullanarak HTML'i render et
+                    ob_start(); // Çıktı tamponlamayı başlat
+                    $this->view('components/comment_item_template', [
+                        'comment' => [
+                            'id' => $new_comment_data['id'],
+                            'user_id' => $comment_user_data['id'],
+                            'username' => $comment_user_data['username'],
+                            'profile_picture_url' => $comment_user_data['profile_picture_url'],
+                            'comment_text' => htmlspecialchars($new_comment_data['comment_text']),
+                            'created_at' => $new_comment_data['created_at'],
+                        ],
+                        'is_logged_in' => true, // Yorumu yapan kişi giriş yapmış
+                        'current_user_id' => $user_id,
+                        'post_owner_id' => $postModel->getPostOwnerId($post_id),
+                    ]);
+                    $comment_html = ob_get_clean(); // Tamponlanan çıktıyı al ve temizle
+
+                    $response = [
+                        'success' => true,
+                        'message' => 'Yorum başarıyla eklendi.',
+                        'comment_html' => $comment_html,
+                        // post.js'deki TypeError için gerekli olan profile_picture_url'i doğrudan ekleyelim
+                        'comment' => [
+                            'username' => $comment_user_data['username'],
+                            'profile_picture_url' => getUserAvatar($comment_user_data['username'], $comment_user_data['profile_picture_url']),
+                            'comment_text' => htmlspecialchars($new_comment_data['comment_text']),
+                            'time_ago' => time_ago(strtotime($new_comment_data['created_at'])),
+                        ],
+                    ];
+
+                    // Bildirim oluştur
+                    $post_owner_id = $postModel->getPostOwnerId($post_id);
+                    if ($post_owner_id && $post_owner_id != $user_id) {
+                        $notificationModel->createNotification($post_owner_id, $user_id, $post_id, 'comment', $comment_text);
                     }
-
-                    // Yeni eklenen yorumu çek ve HTML olarak döndür
-                    $comment = $commentModel->getSingleCommentById($comment_id);
-
-                    ob_start();
-                    // comment_item_template.php'nin ihtiyaç duyduğu değişkenleri burada tanımlıyoruz
-                    $comment_data = $comment; // Şablonda $comment olarak kullanılacak
-                    $is_logged_in_for_comment = true;
-                    $current_user_id_for_comment = $user_id;
-                    $post_owner_id_for_comment = $post_owner_id;
-
-                    include __DIR__ . '/../Views/components/comment_item_template.php';
-                    $comment_html = ob_get_clean();
-
-                    $response = ['success' => true, 'comment_html' => $comment_html];
                 } else {
                     $response['message'] = 'Yorum eklenirken bir hata oluştu.';
                 }
             } catch (Exception $e) {
-                $response['message'] = $e->getMessage();
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
             }
         }
         echo json_encode($response);
     }
 
     /**
-     * AJAX: Bir gönderiye ait yorumları çeker ve HTML olarak döndürür.
+     * AJAX: Gönderi yorumlarını HTML olarak döndürür.
      */
     public function get_comments()
     {
-        header('Content-Type: text/html; charset=utf-8');
+        // header('Content-Type: application/json'); // Artık HTML döndüreceğiz
 
-        if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            $post_id = (int) ($_GET['post_id'] ?? 0);
-            $csrf_token = $_GET['csrf_token'] ?? '';
+        // JSON değil, HTML dönecek, bu yüzden $response dizisini kullanmayacağız.
+        // Hata durumunda doğrudan HTML hata mesajı basacağız.
 
-            if (!verify_csrf_token($csrf_token)) {
-                echo '<p class="text-danger p-3">CSRF doğrulama başarısız.</p>';
+        if ($_SERVER['REQUEST_METHOD'] === 'GET') { // GET isteği olarak alıyoruz
+            $input_data = $_GET;
+
+            // CSRF kontrolü (GET isteklerinde genellikle daha gevşek olabilir, ama güvenlik için tutmak iyi)
+            // Ancak AJAX ile çekilen yorumlar için CSRF token'ı URL'de taşınabilir.
+            if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
+                echo '<p class="text-center text-danger p-3">Güvenlik hatası. Yorumlar yüklenemedi.</p>';
                 exit;
             }
 
+            $post_id = (int) ($input_data['post_id'] ?? 0);
+
             if ($post_id <= 0) {
-                echo '<p class="text-danger p-3">Geçersiz gönderi ID.</p>';
+                echo '<p class="text-center text-danger p-3">Geçersiz gönderi ID\'si.</p>';
                 exit;
             }
 
             $commentModel = $this->model('CommentModel');
-            $postModel = $this->model('PostModel');
+            $postModel = $this->model('PostModel'); // Post sahibini belirlemek için
+
+            $current_user_id = $_SESSION['user_id'] ?? null;
+            $is_logged_in = isset($current_user_id);
+            $post_owner_id = $postModel->getPostOwnerId($post_id);
 
             try {
-                $post_comments = $commentModel->getCommentsForPost($post_id);
-                $post_data = $postModel->getPostDetailsById($post_id);
+                $comments = $commentModel->getCommentsByPostId($post_id, $current_user_id);
 
-                if (empty($post_comments)) {
-                    echo '<p class="text-center text-muted p-3 no-comments">Henüz yorum yok.</p>';
-                    exit;
+                // Debugging için yorum sayısını logla
+                error_log('get_comments: Fetched '.count($comments).' comments for post_id: '.$post_id);
+
+                if (empty($comments)) {
+                    echo '<p class="text-center text-muted no-comments">Henüz yorum yok.</p>';
+                } else {
+                    foreach ($comments as $comment) {
+                        $this->view('components/comment_item_template', [
+                            'comment' => $comment,
+                            'is_logged_in' => $is_logged_in,
+                            'current_user_id' => $current_user_id,
+                            'post_owner_id' => $post_owner_id,
+                        ]);
+                    }
                 }
-
-                foreach ($post_comments as $comment) {
-                    // comment_item_template.php'nin ihtiyaç duyduğu değişkenleri burada tanımlıyoruz
-                    $comment_data = $comment; // Şablonda $comment olarak kullanılacak
-                    $is_logged_in_for_comment = isset($_SESSION['user_id']);
-                    $current_user_id_for_comment = $_SESSION['user_id'] ?? null;
-                    $post_owner_id_for_comment = $post_data['user_id'] ?? null;
-
-                    include __DIR__ . '/../Views/components/comment_item_template.php';
-                }
-
             } catch (Exception $e) {
-                echo '<p class="text-danger p-3">Yorumlar yüklenirken bir hata oluştu: ' . htmlspecialchars($e->getMessage()) . '</p>';
+                // Hata durumunda daha detaylı bilgi loglayalım
+                error_log('get_comments error: '.$e->getMessage().' on post_id: '.$post_id);
+                echo '<p class="text-center text-danger p-3">Yorumlar yüklenirken sunucu hatası oluştu: '.htmlspecialchars($e->getMessage()).'</p>';
             }
         } else {
-            echo '<p class="text-danger p-3">Geçersiz istek metodu.</p>';
+            echo '<p class="text-center text-danger p-3">Geçersiz istek metodu.</p>';
         }
+        exit; // Sadece HTML çıktısı verilecek
     }
 
     /**
-     * AJAX: Gönderiyi silme işlemi.
+     * AJAX: Yorum silme.
      */
-    public function delete_post()
+    public function delete_comment()
     {
         header('Content-Type: application/json');
         $response = ['success' => false, 'message' => 'Geçersiz istek.'];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $input_data = $_POST;
+            try { // Tüm mantığı try-catch içine alalım
+                $input_data = $_POST;
 
-            if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
-                $response['message'] = 'CSRF doğrulama başarısız.';
-                echo json_encode($response);
-                exit;
-            }
-            if (!isset($_SESSION['user_id'])) {
-                $response['message'] = 'Bu işlem için giriş yapmalısınız.';
-                echo json_encode($response);
-                exit;
-            }
+                if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
+                    $response['message'] = 'Güvenlik hatası. Lütfen sayfayı yenileyin.';
+                    echo json_encode($response);
+                    exit;
+                }
+                if (!isset($_SESSION['user_id'])) {
+                    $response['message'] = 'Bu işlem için giriş yapmalısınız.';
+                    echo json_encode($response);
+                    exit;
+                }
 
-            $user_id = $_SESSION['user_id'];
-            $post_id = (int) ($input_data['post_id'] ?? 0);
+                $user_id = $_SESSION['user_id'];
+                $comment_id = (int) ($input_data['comment_id'] ?? 0);
 
-            if ($post_id <= 0) {
-                $response['message'] = 'Geçersiz gönderi ID.';
-                echo json_encode($response);
-                exit;
-            }
+                if ($comment_id <= 0) {
+                    $response['message'] = 'Geçersiz yorum ID\'si.';
+                    echo json_encode($response);
+                    exit;
+                }
 
-            $postModel = $this->model('PostModel');
+                $commentModel = $this->model('CommentModel');
+                $postModel = $this->model('PostModel'); // Yorum sayısını güncellemek için
 
-            try {
-                if ($postModel->deletePost($post_id, $user_id)) {
-                    $response = ['success' => true, 'message' => 'Gönderi başarıyla silindi.'];
+                $comment_data = $commentModel->getCommentById($comment_id);
+                if (!$comment_data) {
+                    $response['message'] = 'Yorum bulunamadı.';
+                    echo json_encode($response);
+                    exit;
+                }
+
+                // Yorumu silme yetkisi kontrolü: Yorum sahibi veya gönderi sahibi silebilir
+                $post_owner_id = $postModel->getPostOwnerId($comment_data['post_id']);
+                if ($user_id !== $comment_data['user_id'] && $user_id !== $post_owner_id) {
+                    $response['message'] = 'Bu yorumu silme yetkiniz yok.';
+                    echo json_encode($response);
+                    exit;
+                }
+
+                if ($commentModel->deleteComment($comment_id)) {
+                    // Yorum sayısını güncelle
+                    $postModel->updateCommentCount($comment_data['post_id'], -1);
+                    $response = ['success' => true, 'message' => 'Yorum başarıyla silindi.'];
                 } else {
-                    $response['message'] = 'Gönderi silinemedi veya yetkiniz yok.';
+                    $response['message'] = 'Yorum silinirken bir hata oluştu.';
                 }
             } catch (Exception $e) {
-                $response['message'] = $e->getMessage();
+                // Herhangi bir PHP hatasını yakala ve JSON olarak döndür
+                error_log('delete_comment error: '.$e->getMessage()); // Hatayı logla
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
             }
         }
         echo json_encode($response);
+        exit; // Her zaman JSON çıktısı verdiğimizden emin olalım
     }
 
     /**
-     * AJAX: Gönderi açıklamasını güncelleme işlemi.
+     * AJAX: Gönderi açıklamasını güncelleme.
      */
     public function update_caption()
     {
@@ -320,7 +413,7 @@ class PostController extends Controller
             $input_data = $_POST;
 
             if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
-                $response['message'] = 'CSRF doğrulama başarısız.';
+                $response['message'] = 'Güvenlik hatası. Lütfen sayfayı yenileyin.';
                 echo json_encode($response);
                 exit;
             }
@@ -334,8 +427,8 @@ class PostController extends Controller
             $post_id = (int) ($input_data['post_id'] ?? 0);
             $new_caption = trim($input_data['new_caption'] ?? '');
 
-            if ($post_id <= 0 || empty($new_caption)) {
-                $response['message'] = 'Geçersiz veri.';
+            if ($post_id <= 0) {
+                $response['message'] = 'Geçersiz gönderi ID\'si.';
                 echo json_encode($response);
                 exit;
             }
@@ -343,130 +436,163 @@ class PostController extends Controller
             $postModel = $this->model('PostModel');
 
             try {
-                if ($postModel->updatePostCaption($post_id, $user_id, $new_caption)) {
-                    $response = ['success' => true, 'message' => 'Açıklama başarıyla güncellendi.', 'updated_caption_html' => linkify(htmlspecialchars($new_caption))];
+                $post_owner_id = $postModel->getPostOwnerId($post_id);
+                if ($post_owner_id !== $user_id) {
+                    $response['message'] = 'Bu gönderiyi düzenleme yetkiniz yok.';
+                    echo json_encode($response);
+                    exit;
+                }
+
+                if ($postModel->updatePostCaption($post_id, $new_caption)) {
+                    $response = [
+                        'success' => true,
+                        'message' => 'Açıklama başarıyla güncellendi.',
+                        'updated_caption_html' => linkify(htmlspecialchars($new_caption)),
+                    ];
                 } else {
-                    $response['message'] = 'Açıklama güncellenemedi veya yetkiniz yok.';
+                    $response['message'] = 'Açıklama güncellenirken bir hata oluştu.';
                 }
             } catch (Exception $e) {
-                $response['message'] = $e->getMessage();
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
             }
         }
         echo json_encode($response);
     }
 
     /**
-     * AJAX: Gönderiyi kaydetme veya kaydı geri çekme işlemi.
+     * AJAX: Gönderiyi silme.
      */
-    public function save()
+    public function delete_post()
     {
         header('Content-Type: application/json');
         $response = ['success' => false, 'message' => 'Geçersiz istek.'];
 
         if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-            $input_data = $_POST;
+            try { // Tüm mantığı try-catch içine alalım
+                $input_data = $_POST;
 
-            if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
-                $response['message'] = 'CSRF doğrulama başarısız.';
-                echo json_encode($response);
-                exit;
-            }
-            if (!isset($_SESSION['user_id'])) {
-                $response['message'] = 'Bu işlem için giriş yapmalısınız.';
-                echo json_encode($response);
-                exit;
-            }
-
-            $user_id = $_SESSION['user_id'];
-            $post_id = (int) ($input_data['post_id'] ?? 0);
-
-            if ($post_id <= 0) {
-                $response['message'] = 'Geçersiz gönderi ID.';
-                echo json_encode($response);
-                exit;
-            }
-
-            $saveModel = $this->model('SaveModel');
-
-            try {
-                $is_currently_saved = $saveModel->isPostSavedByUser($user_id, $post_id);
-
-                if ($is_currently_saved) {
-                    $saveModel->unsavePost($user_id, $post_id);
-                    $action_taken = 'unsaved';
-                } else {
-                    $saveModel->savePost($user_id, $post_id);
-                    $action_taken = 'saved';
+                if (!isset($input_data['csrf_token']) || !verify_csrf_token($input_data['csrf_token'])) {
+                    $response['message'] = 'Güvenlik hatası. Lütfen sayfayı yenileyin.';
+                    echo json_encode($response);
+                    exit;
                 }
-                $response = ['success' => true, 'action' => $action_taken];
+                if (!isset($_SESSION['user_id'])) {
+                    $response['message'] = 'Bu işlem için giriş yapmalısınız.';
+                    echo json_encode($response);
+                    exit;
+                }
 
+                $user_id = $_SESSION['user_id'];
+                $post_id = (int) ($input_data['post_id'] ?? 0);
+
+                if ($post_id <= 0) {
+                    $response['message'] = 'Geçersiz gönderi ID\'si.';
+                    echo json_encode($response);
+                    exit;
+                }
+
+                $postModel = $this->model('PostModel');
+
+                $post_owner_id = $postModel->getPostOwnerId($post_id);
+                if ($post_owner_id !== $user_id) {
+                    $response['message'] = 'Bu gönderiyi silme yetkiniz yok.';
+                    echo json_encode($response);
+                    exit;
+                }
+
+                if ($postModel->deletePost($post_id)) {
+                    $response = ['success' => true, 'message' => 'Gönderi başarıyla silindi.'];
+                } else {
+                    $response['message'] = 'Gönderi silinirken bir hata oluştu.';
+                }
             } catch (Exception $e) {
-                $response['message'] = $e->getMessage();
+                error_log('delete_post error: '.$e->getMessage()); // Hatayı logla
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
             }
         }
         echo json_encode($response);
+        exit; // Her zaman JSON çıktısı verdiğimizden emin olalım
     }
 
     /**
-     * AJAX: Sonsuz kaydırma için daha fazla gönderi yükler.
+     * AJAX: Daha fazla gönderi yükleme (sonsuz kaydırma için).
      */
     public function load_more()
     {
         header('Content-Type: application/json');
-        $response = ['success' => false, 'message' => 'Geçersiz istek.'];
+        $response = ['success' => false, 'message' => 'Geçersiz istek.', 'posts' => []];
 
         if ($_SERVER['REQUEST_METHOD'] === 'GET') {
-            $page = (int) ($_GET['page'] ?? 1);
-            $context = $_GET['context'] ?? 'home'; // home, explore, profile
-            $filter = $_GET['filter'] ?? 'new'; // new, popular
-            $username = $_GET['username'] ?? ''; // Profil sayfası için
+            try { // Tüm mantığı try-catch içine alalım
+                $input_data = $_GET;
 
-            $limit = 10;
-            $offset = ($page - 1) * $limit;
+                $page = (int) ($input_data['page'] ?? 1);
+                $context = $input_data['context'] ?? 'home'; // 'home', 'profile', 'explore', 'saved_posts'
+                $filter = $input_data['filter'] ?? 'new'; // 'new', 'popular'
+                $username = $input_data['username'] ?? ''; // Profil sayfası için
 
-            $postModel = $this->model('PostModel');
-            $userModel = $this->model('UserModel'); // Profil bağlamında user_id almak için
+                $current_user_id = $_SESSION['user_id'] ?? null;
+                $is_logged_in = isset($current_user_id);
 
-            $current_user_id = $_SESSION['user_id'] ?? null;
-            $posts = [];
+                $postModel = $this->model('PostModel');
+                $userModel = $this->model('UserModel');
 
-            try {
-                if ($context === 'home') {
-                    $posts = $postModel->getFeedPosts($current_user_id, $limit, $offset);
-                } elseif ($context === 'explore') {
-                    // Explore için ayrı bir metot veya filtreleme mantığı eklenecek
-                    // Şimdilik getFeedPosts'u genel olarak kullanabiliriz
-                    $posts = $postModel->getFeedPosts($current_user_id, $limit, $offset); 
-                } elseif ($context === 'profile' && !empty($username)) {
-                    $profile_user_data = $userModel->findByUsername($username);
-                    if ($profile_user_data) {
-                        $posts = $postModel->getPostsByUserId($profile_user_data['id'], $current_user_id);
-                        // Profil sayfasında sonsuz kaydırma için offset ve limit eklenmeli
-                        // Şimdilik tüm postları çekiyor, bu da performans sorunu yaratabilir.
-                    }
+                $limit = 9; // Her seferinde yüklenecek gönderi sayısı
+                $offset = ($page - 1) * $limit;
+
+                $posts = [];
+                $total_posts = 0;
+
+                switch ($context) {
+                    case 'home':
+                        $posts = $postModel->getFeedPosts($current_user_id, $limit, $offset, $filter);
+                        $total_posts = $postModel->getFeedPostsCount($current_user_id, $filter);
+                        break;
+                    case 'profile':
+                        $profile_user_id = null;
+                        if (!empty($username)) {
+                            $user_data = $userModel->findByUsername($username);
+                            if ($user_data) {
+                                $profile_user_id = $user_data['id'];
+                            }
+                        }
+                        if ($profile_user_id) {
+                            $posts = $postModel->getPostsByUserId($profile_user_id, $current_user_id, $limit, $offset);
+                            $total_posts = $postModel->getPostsByUserIdCount($profile_user_id);
+                        }
+                        break;
+                    case 'explore':
+                        $posts = $postModel->getExplorePosts($current_user_id, $limit, $offset);
+                        $total_posts = $postModel->getExplorePostsCount($current_user_id);
+                        break;
+                    case 'saved_posts':
+                        if ($is_logged_in) {
+                            $posts = $postModel->getSavedPostsByUser($current_user_id, $limit, $offset);
+                            $total_posts = $postModel->getSavedPostsByUserCount($current_user_id);
+                        }
+                        break;
                 }
 
                 $post_html_array = [];
                 foreach ($posts as $post) {
                     ob_start();
-                    // post_card_feed.php'nin ihtiyaç duyduğu değişkenleri burada tanımlıyoruz
-                    $post_data_for_card = $post;
-                    $is_logged_in_for_card = isset($current_user_id);
-                    $current_user_id_for_card = $current_user_id;
-                    $page_name_for_card = $context; // page_name'i context'e göre ayarla
-
-                    include __DIR__ . '/../Views/components/post_card_feed.php';
+                    $this->view('components/post_card_feed', [
+                        'post' => $post,
+                        'is_logged_in' => $is_logged_in,
+                        'current_user_id' => $current_user_id,
+                    ]);
                     $post_html_array[] = ob_get_clean();
                 }
 
-                $response = ['success' => true, 'posts' => $post_html_array];
-
+                $response['success'] = true;
+                $response['posts'] = $post_html_array;
+                $response['has_more'] = ($offset + count($posts)) < $total_posts;
             } catch (Exception $e) {
-                $response['message'] = $e->getMessage();
+                error_log('load_more error: '.$e->getMessage()); // Hatayı logla
+                $response['message'] = 'Sunucu hatası: '.$e->getMessage();
             }
-        } else {
-            $response['message'] = 'Geçersiz istek metodu.';
         }
         echo json_encode($response);
+        exit; // Her zaman JSON çıktısı verdiğimizden emin olalım
     }
 }
